@@ -17,14 +17,13 @@ const DangerPoint = require('../model/DangerPoint');
 
 router.post('/register', async (req, res) => {
   try {
-
     if (!req.body.username || !req.body.password) {
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
     const existingUser = await User.findOne({ username: req.body.username });
-    if (existingUser!=null) {
-      return res.status(400).json({ message: 'Username already exists'+existingUser });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists. Try another username.' });
     }
 
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
@@ -40,6 +39,7 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 
 
 
