@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-mongoose.connect("mongodb+srv://kesaad:1234@saadclust.2vh4e3z.mongodb.net/?retryWrites=true&w=majority&appName=saadClust", {
+mongoose.connect("mongodb+srv://kesaad:1234@saadclust.2vh4e3z.mongodb.net/safezone_db?retryWrites=true&w=majority&appName=saadClust", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });

@@ -13,6 +13,7 @@ const Settings = require('../model/Settings');
 const Status = require('../model/Status');
 const ActivityLog = require('../model/ActivityLog');
 const Alert = require('../model/Alert');
+const DangerPoint = require('../model/DangerPoint');
 
 router.post('/register', async (req, res) => {
   try {
@@ -22,8 +23,8 @@ router.post('/register', async (req, res) => {
     }
 
     const existingUser = await User.findOne({ username: req.body.username });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Username already exists' });
+    if (existingUser!=null) {
+      return res.status(400).json({ message: 'Username already exists'+existingUser });
     }
 
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
@@ -652,6 +653,19 @@ router.delete('/notifications/:id', async (req, res) => {
       return res.status(404).json({ message: 'Notification not found' });
     }
     res.json({ message: 'Notification deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.post('/dangerpoints', async (req, res) => {
+  try {
+    
+    const { latitude, longitude } = req.body;
+    
+    const newDangerPoint = await DangerPoint.create({ latitude, longitude });
+    
+    res.status(201).json(newDangerPoint);
   } catch (error) {
     res.status(500).json({ message: 'Internal server error' });
   }
