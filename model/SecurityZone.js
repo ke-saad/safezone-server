@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const securityZoneSchema = new mongoose.Schema({
-  // Define schema fields as per your requirements
+  coordinates: [{ type: Number, required: true }] // Array of coordinates [longitude, latitude]
 });
 
 const SecurityZone = mongoose.model("SecurityZone", securityZoneSchema);
