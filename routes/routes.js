@@ -106,13 +106,26 @@ router.post("/users", async (req, res) => {
   }
 });
 
-router.get("/users/:id", async (req, res) => {
+router.get("/users/username/:username", async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const { username } = req.params;
+    const user = await User.findOne({ username: username });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
     res.json(user);
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+router.get("/users/search", async (req, res) => {
+  try {
+    const { query } = req.query;
+    const users = await User.find({ username: { $regex: query, $options: 'i' } });
+    res.json(users);
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
   }
@@ -120,17 +133,33 @@ router.get("/users/:id", async (req, res) => {
 
 router.put("/users/:id", async (req, res) => {
   try {
-    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
+    const { id } = req.params;
+    const { password, ...userData } = req.body;
+    const user = await User.findById(id);
+
+    // Check if the user is an admin
+    if (!user.isAdmin) {
+      // If not an admin, proceed with the update directly
+      const updatedUser = await User.findByIdAndUpdate(id, userData, { new: true });
+      return res.json(updatedUser);
     }
-    res.json(updatedUser);
+
+    // If the user is an admin, prompt for password
+    const passwordMatch = await bcrypt.compare(password, user.password);
+
+    if (!passwordMatch) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    // Password match, proceed with the update
+    const updatedUser = await User.findByIdAndUpdate(id, userData, { new: true });
+    return res.json(updatedUser);
   } catch (error) {
+    console.error("Error updating user:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 router.delete("/users/:id", async (req, res) => {
   try {
