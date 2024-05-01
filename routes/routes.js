@@ -178,6 +178,7 @@ router.get("/securityzones", async (req, res) => {
     const securityZones = await SecurityZone.find();
     res.json(securityZones);
   } catch (error) {
+    console.error("Error fetching security zones:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -187,6 +188,7 @@ router.post("/securityzones", async (req, res) => {
     const newSecurityZone = await SecurityZone.create(req.body);
     res.status(201).json(newSecurityZone);
   } catch (error) {
+    console.error("Error creating security zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -199,6 +201,7 @@ router.get("/securityzones/:id", async (req, res) => {
     }
     res.json(securityZone);
   } catch (error) {
+    console.error("Error fetching security zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -215,6 +218,7 @@ router.put("/securityzones/:id", async (req, res) => {
     }
     res.json(updatedSecurityZone);
   } catch (error) {
+    console.error("Error updating security zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -229,32 +233,32 @@ router.delete("/securityzones/:id", async (req, res) => {
     }
     res.json({ message: "Security zone deleted successfully" });
   } catch (error) {
+    console.error("Error deleting security zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// Retrieve all danger zones
 router.get("/dangerzones", async (req, res) => {
   try {
     const dangerZones = await DangerZone.find();
     res.json(dangerZones);
   } catch (error) {
+    console.error("Error fetching danger zones:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// Create a new danger zone
 router.post("/dangerzones", async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
     const newDangerZone = await DangerZone.create({ latitude, longitude });
     res.status(201).json(newDangerZone);
   } catch (error) {
+    console.error("Error creating danger zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// Retrieve a specific danger zone by ID
 router.get("/dangerzones/:id", async (req, res) => {
   try {
     const dangerZone = await DangerZone.findById(req.params.id);
@@ -263,11 +267,11 @@ router.get("/dangerzones/:id", async (req, res) => {
     }
     res.json(dangerZone);
   } catch (error) {
+    console.error("Error fetching danger zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// Update a specific danger zone by ID
 router.put("/dangerzones/:id", async (req, res) => {
   try {
     const updatedDangerZone = await DangerZone.findByIdAndUpdate(
@@ -280,19 +284,22 @@ router.put("/dangerzones/:id", async (req, res) => {
     }
     res.json(updatedDangerZone);
   } catch (error) {
+    console.error("Error updating danger zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// Delete a specific danger zone by ID
 router.delete("/dangerzones/:id", async (req, res) => {
   try {
-    const deletedDangerZone = await DangerZone.findByIdAndDelete(req.params.id);
+    const deletedDangerZone = await DangerZone.findByIdAndDelete(
+      req.params.id
+    );
     if (!deletedDangerZone) {
       return res.status(404).json({ message: "Danger zone not found" });
     }
     res.json({ message: "Danger zone deleted successfully" });
   } catch (error) {
+    console.error("Error deleting danger zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
