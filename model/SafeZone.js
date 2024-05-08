@@ -10,14 +10,10 @@ const markerSchema = new mongoose.Schema({
       },
       message: "Coordinates must be an array of [longitude, latitude]"
     }
-  },
-  description: { 
-    type: String,
-    required: true
   }
 });
 
-const dangerZoneSchema = new mongoose.Schema({
+const safeZoneSchema = new mongoose.Schema({
   markers: {
     type: [markerSchema],
     validate: {
@@ -27,7 +23,7 @@ const dangerZoneSchema = new mongoose.Schema({
       message: "There must exactly be 10 markers"
     }
   }
-}, { collection: 'dangerzones' });
+}, { collection: 'safezones' });
 
-const DangerZone = mongoose.model("DangerZone", dangerZoneSchema);
-module.exports = DangerZone;
+const SafeZone = mongoose.model("SafeZone", safeZoneSchema);
+module.exports = SafeZone;

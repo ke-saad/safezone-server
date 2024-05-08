@@ -8,12 +8,13 @@ const User = require("../model/User");
 const Report = require("../model/Report");
 //const Role = require("../model/Role");
 const Safety = require("../model/Safety");
-const SecurityZone = require("../model/SecurityZone");
+const SecurityZone = require("../model/SafeZone");
 //const Settings = require("../model/Settings");
 const Status = require("../model/Status");
 const ActivityLog = require("../model/ActivityLog");
 const Alert = require("../model/Alert");
 const DangerZone = require("../model/DangerZone"); 
+const SafeZone = require("../model/SafeZone"); 
 
 router.post("/register", async (req, res) => {
   try {
@@ -173,27 +174,31 @@ router.delete("/users/:id", async (req, res) => {
   }
 });
 
-router.get("/securityzones", async (req, res) => {
+router.get("/safezones", async (req, res) => {
   try {
-    const securityZones = await SecurityZone.find();
-    res.json(securityZones);
+    const safezones = await SecurityZone.find();
+    res.json(safezones);
   } catch (error) {
     console.error("Error fetching security zones:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-router.post("/securityzones", async (req, res) => {
+router.post("/safezones/add", async (req, res) => {
   try {
-    const newSecurityZone = await SecurityZone.create(req.body);
-    res.status(201).json(newSecurityZone);
+    const { markers } = req.body;  // Each marker has only coordinates
+    if (markers.length !== 10) {
+      return res.status(400).json({ error: "Exactly 10 markers are required." });
+    }
+    const createdZones = await SafeZone.create({ markers });
+    res.status(201).json({ success: true, message: "Safe zones added successfully", data: createdZones });
   } catch (error) {
-    console.error("Error creating security zone:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Error adding safe zones:", error);
+    res.status(500).json({ success: false, error: "Failed to add safe zones" });
   }
 });
 
-router.get("/securityzones/:id", async (req, res) => {
+router.get("/safezones/:id", async (req, res) => {
   try {
     const securityZone = await SecurityZone.findById(req.params.id);
     if (!securityZone) {
@@ -206,7 +211,7 @@ router.get("/securityzones/:id", async (req, res) => {
   }
 });
 
-router.put("/securityzones/:id", async (req, res) => {
+router.put("/safezones/:id", async (req, res) => {
   try {
     const updatedSecurityZone = await SecurityZone.findByIdAndUpdate(
       req.params.id,
@@ -223,7 +228,7 @@ router.put("/securityzones/:id", async (req, res) => {
   }
 });
 
-router.delete("/securityzones/:id", async (req, res) => {
+router.delete("/safezones/:id", async (req, res) => {
   try {
     const deletedSecurityZone = await SecurityZone.findByIdAndDelete(
       req.params.id
@@ -248,14 +253,18 @@ router.get("/dangerzones", async (req, res) => {
   }
 });
 
-router.post("/dangerzones", async (req, res) => {
+// For Danger Zones
+router.post("/dangerzones/add", async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
-    const newDangerZone = await DangerZone.create({ latitude, longitude });
-    res.status(201).json(newDangerZone);
+    const { markers } = req.body;  // Each marker has coordinates and a description
+    if (markers.length !== 10) {
+      return res.status(400).json({ error: "Exactly 10 markers are required." });
+    }
+    const createdZones = await DangerZone.create({ markers });
+    res.status(201).json({ success: true, message: "Dangerous zones added successfully", data: createdZones });
   } catch (error) {
-    console.error("Error creating danger zone:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Error adding dangerous zones:", error);
+    res.status(500).json({ success: false, error: "Failed to add dangerous zones" });
   }
 });
 
