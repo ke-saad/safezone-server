@@ -15,6 +15,8 @@ const ActivityLog = require("../model/ActivityLog");
 const Alert = require("../model/Alert");
 const DangerZone = require("../model/DangerZone"); 
 const SafeZone = require("../model/SafeZone"); 
+const DangerMarker = require("../model/DangerMarker");
+const SafetyMarker = require("../model/SafetyMarker");
 
 router.post("/register", async (req, res) => {
   try {
@@ -174,78 +176,10 @@ router.delete("/users/:id", async (req, res) => {
   }
 });
 
-router.get("/safezones", async (req, res) => {
-  try {
-    const safezones = await SecurityZone.find();
-    res.json(safezones);
-  } catch (error) {
-    console.error("Error fetching security zones:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-router.post("/safezones/add", async (req, res) => {
-  try {
-    const { markers } = req.body;  // Each marker has only coordinates
-    if (markers.length !== 10) {
-      return res.status(400).json({ error: "Exactly 10 markers are required." });
-    }
-    const createdZones = await SafeZone.create({ markers });
-    res.status(201).json({ success: true, message: "Safe zones added successfully", data: createdZones });
-  } catch (error) {
-    console.error("Error adding safe zones:", error);
-    res.status(500).json({ success: false, error: "Failed to add safe zones" });
-  }
-});
-
-router.get("/safezones/:id", async (req, res) => {
-  try {
-    const securityZone = await SecurityZone.findById(req.params.id);
-    if (!securityZone) {
-      return res.status(404).json({ message: "Security zone not found" });
-    }
-    res.json(securityZone);
-  } catch (error) {
-    console.error("Error fetching security zone:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-router.put("/safezones/:id", async (req, res) => {
-  try {
-    const updatedSecurityZone = await SecurityZone.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-    if (!updatedSecurityZone) {
-      return res.status(404).json({ message: "Security zone not found" });
-    }
-    res.json(updatedSecurityZone);
-  } catch (error) {
-    console.error("Error updating security zone:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-router.delete("/safezones/:id", async (req, res) => {
-  try {
-    const deletedSecurityZone = await SecurityZone.findByIdAndDelete(
-      req.params.id
-    );
-    if (!deletedSecurityZone) {
-      return res.status(404).json({ message: "Security zone not found" });
-    }
-    res.json({ message: "Security zone deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting security zone:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
+// DANGER ZONES ROUTES
 router.get("/dangerzones", async (req, res) => {
   try {
-    const dangerZones = await DangerZone.find();
+    const dangerZones = await DangerZone.find().populate("markers");
     res.json(dangerZones);
   } catch (error) {
     console.error("Error fetching danger zones:", error);
@@ -253,24 +187,40 @@ router.get("/dangerzones", async (req, res) => {
   }
 });
 
-// For Danger Zones
 router.post("/dangerzones/add", async (req, res) => {
   try {
-    const { markers } = req.body;  // Each marker has coordinates and a description
-    if (markers.length !== 10) {
+    const { markers } = req.body;
+    if (!Array.isArray(markers) || markers.length !== 10) {
       return res.status(400).json({ error: "Exactly 10 markers are required." });
     }
-    const createdZones = await DangerZone.create({ markers });
-    res.status(201).json({ success: true, message: "Dangerous zones added successfully", data: createdZones });
+
+    // Create markers and associate them with the zone
+    const markerDocs = await DangerMarker.insertMany(
+      markers.map((marker) => ({ ...marker }))
+    );
+
+    // Create the zone and link marker IDs
+    const createdZone = await DangerZone.create({
+      markers: markerDocs.map((marker) => marker._id)
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Danger zone added successfully",
+      data: createdZone
+    });
   } catch (error) {
-    console.error("Error adding dangerous zones:", error);
-    res.status(500).json({ success: false, error: "Failed to add dangerous zones" });
+    console.error("Error adding danger zone:", error);
+    res.status(500).json({ success: false, error: "Failed to add danger zone" });
   }
 });
 
+
 router.get("/dangerzones/:id", async (req, res) => {
   try {
-    const dangerZone = await DangerZone.findById(req.params.id);
+    const dangerZone = await DangerZone.findById(req.params.id).populate(
+      "markers"
+    );
     if (!dangerZone) {
       return res.status(404).json({ message: "Danger zone not found" });
     }
@@ -283,11 +233,20 @@ router.get("/dangerzones/:id", async (req, res) => {
 
 router.put("/dangerzones/:id", async (req, res) => {
   try {
+    const { markers } = req.body;
+    if (markers && markers.length === 10) {
+      await DangerMarker.deleteMany({ zone: req.params.id });
+      const markerDocs = await DangerMarker.insertMany(
+        markers.map((marker) => ({ ...marker, zone: req.params.id }))
+      );
+      req.body.markers = markerDocs.map((marker) => marker._id);
+    }
+
     const updatedDangerZone = await DangerZone.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true }
-    );
+    ).populate("markers");
     if (!updatedDangerZone) {
       return res.status(404).json({ message: "Danger zone not found" });
     }
@@ -300,19 +259,233 @@ router.put("/dangerzones/:id", async (req, res) => {
 
 router.delete("/dangerzones/:id", async (req, res) => {
   try {
-    const deletedDangerZone = await DangerZone.findByIdAndDelete(
-      req.params.id
-    );
-    if (!deletedDangerZone) {
+    const zoneId = req.params.id;
+
+    // Delete associated markers
+    await DangerMarker.deleteMany({ zone: zoneId });
+
+    // Delete the zone itself
+    const deletedZone = await DangerZone.findByIdAndDelete(zoneId);
+    if (!deletedZone) {
       return res.status(404).json({ message: "Danger zone not found" });
     }
-    res.json({ message: "Danger zone deleted successfully" });
+    res.json({
+      message: "Danger zone and associated markers deleted successfully",
+    });
   } catch (error) {
     console.error("Error deleting danger zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
+// DANGER MARKERS ROUTES
+router.get("/dangermarkers", async (req, res) => {
+  try {
+    const dangerMarkers = await DangerMarker.find();
+    res.json(dangerMarkers);
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post("/dangermarkers/add", async (req, res) => {
+  try {
+    const { coordinates, description } = req.body;
+    const newMarker = await DangerMarker.create({ coordinates, description });
+    res.status(201).json({
+      success: true,
+      message: "Danger marker added successfully",
+      data: newMarker,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Failed to add danger marker" });
+  }
+});
+
+router.put("/dangermarkers/:id", async (req, res) => {
+  try {
+    const updatedDangerMarker = await DangerMarker.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    if (!updatedDangerMarker) {
+      return res.status(404).json({ message: "Danger marker not found" });
+    }
+    res.json(updatedDangerMarker);
+  } catch (error) {
+    console.error("Error updating danger marker:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.delete("/dangermarkers/:id", async (req, res) => {
+  try {
+    const deletedMarker = await DangerMarker.findOneAndDelete({ _id: req.params.id });
+    if (!deletedMarker) {
+      return res.status(404).json({ message: "Danger marker not found" });
+    }
+    res.json({ message: "Danger marker deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting danger marker:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// SAFE ZONES ROUTES
+router.get("/safezones", async (req, res) => {
+  try {
+    const safeZones = await SafeZone.find().populate("markers");
+    res.json(safeZones);
+  } catch (error) {
+    console.error("Error fetching safe zones:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post("/safezones/add", async (req, res) => {
+  try {
+    const { markers } = req.body;
+    if (!Array.isArray(markers) || markers.length !== 10) {
+      return res
+        .status(400)
+        .json({ error: "Exactly 10 markers are required." });
+    }
+
+    // Create markers and associate them with the zone
+    const markerDocs = await SafetyMarker.insertMany(
+      markers.map((marker) => ({ ...marker }))
+    );
+
+    // Create the zone and link marker IDs
+    const createdZone = await SafeZone.create({
+      markers: markerDocs.map((marker) => marker._id),
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Safe zone added successfully",
+      data: createdZone,
+    });
+  } catch (error) {
+    console.error("Error adding safe zone:", error);
+    res.status(500).json({ success: false, error: "Failed to add safe zone" });
+  }
+});
+
+router.get("/safezones/:id", async (req, res) => {
+  try {
+    const safeZone = await SafeZone.findById(req.params.id).populate("markers");
+    if (!safeZone) {
+      return res.status(404).json({ message: "Safe zone not found" });
+    }
+    res.json(safeZone);
+  } catch (error) {
+    console.error("Error fetching safe zone:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.put("/safezones/:id", async (req, res) => {
+  try {
+    const { markers } = req.body;
+    if (markers && markers.length === 10) {
+      await SafetyMarker.deleteMany({ zone: req.params.id });
+      const markerDocs = await SafetyMarker.insertMany(
+        markers.map((marker) => ({ ...marker, zone: req.params.id }))
+      );
+      req.body.markers = markerDocs.map((marker) => marker._id);
+    }
+
+    const updatedSafeZone = await SafeZone.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    ).populate("markers");
+    if (!updatedSafeZone) {
+      return res.status(404).json({ message: "Safe zone not found" });
+    }
+    res.json(updatedSafeZone);
+  } catch (error) {
+    console.error("Error updating safe zone:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.delete("/safezones/:id", async (req, res) => {
+  try {
+    const zoneId = req.params.id;
+
+    // Delete associated markers
+    await SafetyMarker.deleteMany({ zone: zoneId });
+
+    // Delete the zone itself
+    const deletedZone = await SafeZone.findByIdAndDelete(zoneId);
+    if (!deletedZone) {
+      return res.status(404).json({ message: "Safe zone not found" });
+    }
+    res.json({
+      message: "Safe zone and associated markers deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting safe zone:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// SAFETY MARKERS ROUTES
+router.get("/safetymarkers", async (req, res) => {
+  try {
+    const safetyMarkers = await SafetyMarker.find();
+    res.json(safetyMarkers);
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post("/safetymarkers/add", async (req, res) => {
+  try {
+    const { coordinates, description } = req.body;
+    const newMarker = await SafetyMarker.create({ coordinates, description });
+    res.status(201).json({
+      success: true,
+      message: "Safety marker added successfully",
+      data: newMarker,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Failed to add safety marker" });
+  }
+});
+
+router.put("/safetymarkers/:id", async (req, res) => {
+  try {
+    const updatedSafetyMarker = await SafetyMarker.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    if (!updatedSafetyMarker) {
+      return res.status(404).json({ message: "Safety marker not found" });
+    }
+    res.json(updatedSafetyMarker);
+  } catch (error) {
+    console.error("Error updating safety marker:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.delete("/safetymarkers/:id", async (req, res) => {
+  try {
+    const deletedMarker = await SafetyMarker.findOneAndDelete({ _id: req.params.id });
+    if (!deletedMarker) {
+      return res.status(404).json({ message: "Safety marker not found" });
+    }
+    res.json({ message: "Safety marker deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting safety marker:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 router.get("/activityLogs", async (req, res) => {
   try {

@@ -1,33 +1,28 @@
+// models/DangerMarker.js
 const mongoose = require("mongoose");
+const DangerZone = require("./DangerZone");
 
-const markerSchema = new mongoose.Schema({
+const dangerMarkerSchema = new mongoose.Schema({
   coordinates: {
-    type: [Number], // Expecting [longitude, latitude]
-    required: true,
-    validate: {
-      validator: function (coords) {
-        return coords.length === 2; // Must be exactly two elements for coordinates
-      },
-      message: "Coordinates must be an array of [longitude, latitude]"
-    }
-  },
-  description: { 
-    type: String,
+    type: [Number],
     required: true
+  },
+  description: String,
+  zone: { type: mongoose.Schema.Types.ObjectId, ref: "DangerZone" }
+});
+
+dangerMarkerSchema.post("findOneAndDelete", async function (doc) {
+  if (doc) {
+    const zone = await DangerZone.findById(doc.zone);
+    if (zone) {
+      const remainingMarkers = await this.model.countDocuments({ zone: zone._id });
+      if (remainingMarkers < 10) {
+        await DangerZone.findByIdAndDelete(zone._id);
+      }
+    }
   }
 });
 
-const dangerZoneSchema = new mongoose.Schema({
-  markers: {
-    type: [markerSchema],
-    validate: {
-      validator: function (v) {
-        return v.length === 10; // Ensure exactly 10 markers
-      },
-      message: "There must exactly be 10 markers"
-    }
-  }
-}, { collection: 'dangerzones' });
+const DangerMarker = mongoose.model("DangerMarker", dangerMarkerSchema);
 
-const DangerZone = mongoose.model("DangerZone", dangerZoneSchema);
-module.exports = DangerZone;
+module.exports = DangerMarker;
