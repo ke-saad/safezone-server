@@ -70,6 +70,30 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.post("/userslogin", async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.body.username });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid username or password" });
+    }
+
+    if (user.isAdmin) {
+      return res.status(403).json({ message: "Admin login not allowed from this app" });
+    }
+
+    const passwordMatch = await bcrypt.compare(req.body.password, user.password);
+    if (!passwordMatch) {
+      return res.status(401).json({ message: "Invalid username or password" });
+    }
+
+    const token = jwt.sign({ userId: user._id, role: user.isAdmin ? "admin" : "user" }, "mySecretKey123");
+    res.json({ token });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
 // Add this to your Express router
 
 router.get("/user/role", async (req, res) => {
