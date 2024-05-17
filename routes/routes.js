@@ -312,17 +312,33 @@ router.get("/dangermarkers", async (req, res) => {
   }
 });
 
-router.post("/dangermarkers/add", async (req, res) => {
+
+router.get('/dangermarkers/:id', async (req, res) => {
+  try {
+    const dangerMarker = await DangerMarker.findById(req.params.id);
+    if (!dangerMarker) {
+      return res.status(404).json({ message: 'Danger marker not found' });
+    }
+    res.json(dangerMarker);
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.post('/dangermarkers/add', async (req, res) => {
   try {
     const { coordinates, description } = req.body;
+    if (!description.trim()) {
+      return res.status(400).json({ success: false, error: 'Description cannot be empty' });
+    }
     const newMarker = await DangerMarker.create({ coordinates, description });
     res.status(201).json({
       success: true,
-      message: "Danger marker added successfully",
+      message: 'Danger marker added successfully',
       data: newMarker,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: "Failed to add danger marker" });
+    res.status(500).json({ success: false, error: 'Failed to add danger marker' });
   }
 });
 
@@ -343,18 +359,18 @@ router.put("/dangermarkers/:id", async (req, res) => {
   }
 });
 
-router.delete("/dangermarkers/:id", async (req, res) => {
+router.delete('/dangermarkers/:id', async (req, res) => {
   try {
-    const deletedMarker = await DangerMarker.findOneAndDelete({ _id: req.params.id });
-    if (!deletedMarker) {
-      return res.status(404).json({ message: "Danger marker not found" });
+    const marker = await DangerMarker.findByIdAndDelete(req.params.id);
+    if (!marker) {
+      return res.status(404).json({ message: 'Danger marker not found' });
     }
-    res.json({ message: "Danger marker deleted successfully" });
+    res.json({ message: 'Danger marker deleted successfully' });
   } catch (error) {
-    console.error("Error deleting danger marker:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 
 // SAFE ZONES ROUTES
 router.get("/safezones", async (req, res) => {
@@ -467,17 +483,29 @@ router.get("/safetymarkers", async (req, res) => {
   }
 });
 
-router.post("/safetymarkers/add", async (req, res) => {
+router.get('/safetymarkers/:id', async (req, res) => {
+  try {
+    const safetyMarker = await SafetyMarker.findById(req.params.id);
+    if (!safetyMarker) {
+      return res.status(404).json({ message: 'Safety marker not found' });
+    }
+    res.json(safetyMarker);
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.post('/safetymarkers/add', async (req, res) => {
   try {
     const { coordinates, description } = req.body;
     const newMarker = await SafetyMarker.create({ coordinates, description });
     res.status(201).json({
       success: true,
-      message: "Safety marker added successfully",
+      message: 'Safety marker added successfully',
       data: newMarker,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: "Failed to add safety marker" });
+    res.status(500).json({ success: false, error: 'Failed to add safety marker' });
   }
 });
 
@@ -498,18 +526,18 @@ router.put("/safetymarkers/:id", async (req, res) => {
   }
 });
 
-router.delete("/safetymarkers/:id", async (req, res) => {
+router.delete('/safetymarkers/:id', async (req, res) => {
   try {
-    const deletedMarker = await SafetyMarker.findOneAndDelete({ _id: req.params.id });
-    if (!deletedMarker) {
-      return res.status(404).json({ message: "Safety marker not found" });
+    const marker = await SafetyMarker.findByIdAndDelete(req.params.id);
+    if (!marker) {
+      return res.status(404).json({ message: 'Safety marker not found' });
     }
-    res.json({ message: "Safety marker deleted successfully" });
+    res.json({ message: 'Safety marker deleted successfully' });
   } catch (error) {
-    console.error("Error deleting safety marker:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 
 router.get("/activityLogs", async (req, res) => {
   try {
