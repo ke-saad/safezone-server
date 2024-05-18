@@ -1,4 +1,3 @@
-// models/DangerMarker.js
 const mongoose = require("mongoose");
 const DangerZone = require("./DangerZone");
 
@@ -8,7 +7,8 @@ const dangerMarkerSchema = new mongoose.Schema({
     required: true
   },
   description: String,
-  zone: { type: mongoose.Schema.Types.ObjectId, ref: "DangerZone" }
+  zone: { type: mongoose.Schema.Types.ObjectId, ref: "DangerZone" },
+  timestamp: { type: Date, default: Date.now }
 });
 
 dangerMarkerSchema.post("findOneAndDelete", async function (doc) {
@@ -24,5 +24,4 @@ dangerMarkerSchema.post("findOneAndDelete", async function (doc) {
 });
 
 const DangerMarker = mongoose.model("DangerMarker", dangerMarkerSchema);
-
 module.exports = DangerMarker;

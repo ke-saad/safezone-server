@@ -1,36 +1,28 @@
+require('dotenv').config();
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const axios = require("axios");
 
 const User = require("../model/User");
-//const Notification = require("../model/Notification");
-const Report = require("../model/Report");
-//const Role = require("../model/Role");
-const Safety = require("../model/Safety");
-const SecurityZone = require("../model/SafeZone");
-//const Settings = require("../model/Settings");
-const Status = require("../model/Status");
 const ActivityLog = require("../model/ActivityLog");
 const Alert = require("../model/Alert");
-const DangerZone = require("../model/DangerZone"); 
-const SafeZone = require("../model/SafeZone"); 
+const DangerZone = require("../model/DangerZone");
+const SafeZone = require("../model/SafeZone");
 const DangerMarker = require("../model/DangerMarker");
 const SafetyMarker = require("../model/SafetyMarker");
 
+// User Registration
 router.post("/register", async (req, res) => {
   try {
     if (!req.body.username || !req.body.password) {
-      return res
-        .status(400)
-        .json({ message: "Username and password are required" });
+      return res.status(400).json({ message: "Username and password are required" });
     }
 
     const existingUser = await User.findOne({ username: req.body.username });
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "User already exists. Try another username." });
+      return res.status(400).json({ message: "User already exists. Try another username." });
     }
 
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
@@ -47,6 +39,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
+// User Login
 router.post("/login", async (req, res) => {
   try {
     const user = await User.findOne({ username: req.body.username });
@@ -54,10 +47,7 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid username or password" });
     }
 
-    const passwordMatch = await bcrypt.compare(
-      req.body.password,
-      user.password
-    );
+    const passwordMatch = await bcrypt.compare(req.body.password, user.password);
     if (!passwordMatch) {
       return res.status(401).json({ message: "Invalid username or password" });
     }
@@ -70,6 +60,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// Users Login (Non-Admin)
 router.post("/userslogin", async (req, res) => {
   try {
     const user = await User.findOne({ username: req.body.username });
@@ -93,12 +84,9 @@ router.post("/userslogin", async (req, res) => {
   }
 });
 
-
-// Add this to your Express router
-
+// Get User Role
 router.get("/user/role", async (req, res) => {
   try {
-    // Extract the token from the Authorization header
     const token = req.headers.authorization.split(' ')[1]; // Assuming Bearer schema
     const decoded = jwt.verify(token, "mySecretKey123");
     const user = await User.findById(decoded.userId);
@@ -107,14 +95,13 @@ router.get("/user/role", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Send back the user's role
     res.json({ role: user.isAdmin ? "admin" : "user" });
   } catch (error) {
     res.status(500).json({ message: "Error verifying user role", error });
   }
 });
 
-
+// Get All Users
 router.get("/users", async (req, res) => {
   try {
     const users = await User.find();
@@ -124,6 +111,7 @@ router.get("/users", async (req, res) => {
   }
 });
 
+// Create New User
 router.post("/users", async (req, res) => {
   try {
     const newUser = await User.create(req.body);
@@ -133,6 +121,7 @@ router.post("/users", async (req, res) => {
   }
 });
 
+// Get User by Username
 router.get("/users/username/:username", async (req, res) => {
   try {
     const { username } = req.params;
@@ -147,7 +136,7 @@ router.get("/users/username/:username", async (req, res) => {
   }
 });
 
-
+// Search Users by Query
 router.get("/users/search", async (req, res) => {
   try {
     const { query } = req.query;
@@ -158,27 +147,24 @@ router.get("/users/search", async (req, res) => {
   }
 });
 
+// Update User by ID
 router.put("/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { password, ...userData } = req.body;
     const user = await User.findById(id);
 
-    // Check if the user is an admin
     if (!user.isAdmin) {
-      // If not an admin, proceed with the update directly
       const updatedUser = await User.findByIdAndUpdate(id, userData, { new: true });
       return res.json(updatedUser);
     }
 
-    // If the user is an admin, prompt for password
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
       return res.status(401).json({ message: "Incorrect password" });
     }
 
-    // Password match, proceed with the update
     const updatedUser = await User.findByIdAndUpdate(id, userData, { new: true });
     return res.json(updatedUser);
   } catch (error) {
@@ -187,7 +173,7 @@ router.put("/users/:id", async (req, res) => {
   }
 });
 
-
+// Delete User by ID
 router.delete("/users/:id", async (req, res) => {
   try {
     const deletedUser = await User.findByIdAndDelete(req.params.id);
@@ -200,7 +186,7 @@ router.delete("/users/:id", async (req, res) => {
   }
 });
 
-// DANGER ZONES ROUTES
+// Danger Zones Routes
 router.get("/dangerzones", async (req, res) => {
   try {
     const dangerZones = await DangerZone.find().populate("markers");
@@ -218,12 +204,8 @@ router.post("/dangerzones/add", async (req, res) => {
       return res.status(400).json({ error: "Exactly 10 markers are required." });
     }
 
-    // Create markers and associate them with the zone
-    const markerDocs = await DangerMarker.insertMany(
-      markers.map((marker) => ({ ...marker }))
-    );
+    const markerDocs = await DangerMarker.insertMany(markers.map((marker) => ({ ...marker })));
 
-    // Create the zone and link marker IDs
     const createdZone = await DangerZone.create({
       markers: markerDocs.map((marker) => marker._id)
     });
@@ -239,12 +221,9 @@ router.post("/dangerzones/add", async (req, res) => {
   }
 });
 
-
 router.get("/dangerzones/:id", async (req, res) => {
   try {
-    const dangerZone = await DangerZone.findById(req.params.id).populate(
-      "markers"
-    );
+    const dangerZone = await DangerZone.findById(req.params.id).populate("markers");
     if (!dangerZone) {
       return res.status(404).json({ message: "Danger zone not found" });
     }
@@ -285,10 +264,8 @@ router.delete("/dangerzones/:id", async (req, res) => {
   try {
     const zoneId = req.params.id;
 
-    // Delete associated markers
     await DangerMarker.deleteMany({ zone: zoneId });
 
-    // Delete the zone itself
     const deletedZone = await DangerZone.findByIdAndDelete(zoneId);
     if (!deletedZone) {
       return res.status(404).json({ message: "Danger zone not found" });
@@ -302,7 +279,7 @@ router.delete("/dangerzones/:id", async (req, res) => {
   }
 });
 
-// DANGER MARKERS ROUTES
+// Danger Markers Routes
 router.get("/dangermarkers", async (req, res) => {
   try {
     const dangerMarkers = await DangerMarker.find();
@@ -311,7 +288,6 @@ router.get("/dangermarkers", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
 
 router.get('/dangermarkers/:id', async (req, res) => {
   try {
@@ -371,8 +347,7 @@ router.delete('/dangermarkers/:id', async (req, res) => {
   }
 });
 
-
-// SAFE ZONES ROUTES
+// Safe Zones Routes
 router.get("/safezones", async (req, res) => {
   try {
     const safeZones = await SafeZone.find().populate("markers");
@@ -387,17 +362,11 @@ router.post("/safezones/add", async (req, res) => {
   try {
     const { markers } = req.body;
     if (!Array.isArray(markers) || markers.length !== 10) {
-      return res
-        .status(400)
-        .json({ error: "Exactly 10 markers are required." });
+      return res.status(400).json({ error: "Exactly 10 markers are required." });
     }
 
-    // Create markers and associate them with the zone
-    const markerDocs = await SafetyMarker.insertMany(
-      markers.map((marker) => ({ ...marker }))
-    );
+    const markerDocs = await SafetyMarker.insertMany(markers.map((marker) => ({ ...marker })));
 
-    // Create the zone and link marker IDs
     const createdZone = await SafeZone.create({
       markers: markerDocs.map((marker) => marker._id),
     });
@@ -456,10 +425,8 @@ router.delete("/safezones/:id", async (req, res) => {
   try {
     const zoneId = req.params.id;
 
-    // Delete associated markers
     await SafetyMarker.deleteMany({ zone: zoneId });
 
-    // Delete the zone itself
     const deletedZone = await SafeZone.findByIdAndDelete(zoneId);
     if (!deletedZone) {
       return res.status(404).json({ message: "Safe zone not found" });
@@ -473,7 +440,7 @@ router.delete("/safezones/:id", async (req, res) => {
   }
 });
 
-// SAFETY MARKERS ROUTES
+// Safety Markers Routes
 router.get("/safetymarkers", async (req, res) => {
   try {
     const safetyMarkers = await SafetyMarker.find();
@@ -538,7 +505,7 @@ router.delete('/safetymarkers/:id', async (req, res) => {
   }
 });
 
-
+// Activity Logs Routes
 router.get("/activityLogs", async (req, res) => {
   try {
     const activityLogs = await ActivityLog.find();
@@ -571,11 +538,7 @@ router.get("/activityLogs/:id", async (req, res) => {
 
 router.put("/activityLogs/:id", async (req, res) => {
   try {
-    const updatedActivityLog = await ActivityLog.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    const updatedActivityLog = await ActivityLog.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!updatedActivityLog) {
       return res.status(404).json({ message: "Activity log not found" });
     }
@@ -587,9 +550,7 @@ router.put("/activityLogs/:id", async (req, res) => {
 
 router.delete("/activityLogs/:id", async (req, res) => {
   try {
-    const deletedActivityLog = await ActivityLog.findByIdAndDelete(
-      req.params.id
-    );
+    const deletedActivityLog = await ActivityLog.findByIdAndDelete(req.params.id);
     if (!deletedActivityLog) {
       return res.status(404).json({ message: "Activity log not found" });
     }
@@ -599,6 +560,7 @@ router.delete("/activityLogs/:id", async (req, res) => {
   }
 });
 
+// Alerts Routes
 router.get("/alerts", async (req, res) => {
   try {
     const alerts = await Alert.find();
@@ -631,11 +593,7 @@ router.get("/alerts/:id", async (req, res) => {
 
 router.put("/alerts/:id", async (req, res) => {
   try {
-    const updatedAlert = await Alert.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    const updatedAlert = await Alert.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!updatedAlert) {
       return res.status(404).json({ message: "Alert not found" });
     }
@@ -657,14 +615,72 @@ router.delete("/alerts/:id", async (req, res) => {
   }
 });
 
-router.post("/dangerpoints", async (req, res) => {
+// MAPBOX ROUTES
+
+// Search Suggestions API (Forward Geocoding)
+router.get('/mapbox/suggestions', async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
-
-    const newDangerPoint = await DangerPoint.create({ latitude, longitude });
-
-    res.status(201).json(newDangerPoint);
+    const { q, limit } = req.query;
+    const response = await axios.get('https://api.mapbox.com/search/searchbox/v1/suggest', {
+      params: {
+        q,
+        limit,
+        access_token: process.env.MAPBOX_ACCESS_TOKEN,
+      }
+    });
+    res.json(response.data);
   } catch (error) {
+    console.error("Error fetching search suggestions:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Reverse Geocoding API
+router.get('/mapbox/reverse-geocode', async (req, res) => {
+  try {
+    const { longitude, latitude } = req.query;
+    const response = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json`, {
+      params: {
+        access_token: process.env.MAPBOX_ACCESS_TOKEN,
+      },
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error("Error fetching reverse geocode:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+// Retrieve a Suggested Feature
+router.get('/mapbox/retrieve/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const response = await axios.get(`https://api.mapbox.com/search/searchbox/v1/retrieve/${id}`, {
+      params: {
+        access_token: process.env.MAPBOX_ACCESS_TOKEN
+      }
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error("Error retrieving feature:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Category Search API
+router.get('/mapbox/categories', async (req, res) => {
+  try {
+    const { language } = req.query;
+    const response = await axios.get('https://api.mapbox.com/search/searchbox/v1/list/category', {
+      params: {
+        language,
+        access_token: process.env.MAPBOX_ACCESS_TOKEN
+      }
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error("Error fetching category list:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });

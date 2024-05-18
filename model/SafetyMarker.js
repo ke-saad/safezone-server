@@ -1,4 +1,3 @@
-// models/SafetyMarker.js
 const mongoose = require("mongoose");
 const SafeZone = require("./SafeZone");
 
@@ -8,7 +7,8 @@ const safetyMarkerSchema = new mongoose.Schema({
     required: true
   },
   description: String,
-  zone: { type: mongoose.Schema.Types.ObjectId, ref: "SafeZone" }
+  zone: { type: mongoose.Schema.Types.ObjectId, ref: "SafeZone" },
+  timestamp: { type: Date, default: Date.now }
 });
 
 safetyMarkerSchema.post("findOneAndDelete", async function (doc) {
@@ -24,5 +24,4 @@ safetyMarkerSchema.post("findOneAndDelete", async function (doc) {
 });
 
 const SafetyMarker = mongoose.model("SafetyMarker", safetyMarkerSchema);
-
 module.exports = SafetyMarker;
