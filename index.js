@@ -3,20 +3,20 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const http = require("http");
 const socketIo = require("socket.io");
+const dotenv = require("dotenv");
 const routes = require("./routes/routes");
+
+dotenv.config(); // Load environment variables from .env file
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
 // Set up mongoose connection
-mongoose.connect(
-  "mongodb+srv://kesaad:1234@saadclust.2vh4e3z.mongodb.net/safezone_db?retryWrites=true&w=majority&appName=saadClust",
-  {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  }
-);
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
 app.use(routes);
 

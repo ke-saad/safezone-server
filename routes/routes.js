@@ -617,20 +617,20 @@ router.delete("/alerts/:id", async (req, res) => {
 
 // MAPBOX ROUTES
 
-// Search Suggestions API (Forward Geocoding)
-router.get('/mapbox/suggestions', async (req, res) => {
+// Forward Geocoding API
+router.get('/mapbox/forward', async (req, res) => {
   try {
     const { q, limit } = req.query;
-    const response = await axios.get('https://api.mapbox.com/search/searchbox/v1/suggest', {
+    const response = await axios.get('https://api.mapbox.com/search/searchbox/v1/forward', {
       params: {
         q,
         limit,
-        access_token: process.env.MAPBOX_ACCESS_TOKEN,
+        access_token: process.env.MAPBOX_ACCESS_TOKEN, // Ensure this is correctly set
       }
     });
     res.json(response.data);
   } catch (error) {
-    console.error("Error fetching search suggestions:", error);
+    console.error("Error fetching forward geocode:", error.response ? error.response.data : error.message);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -639,34 +639,37 @@ router.get('/mapbox/suggestions', async (req, res) => {
 router.get('/mapbox/reverse-geocode', async (req, res) => {
   try {
     const { longitude, latitude } = req.query;
-    const response = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json`, {
+    
+    // Log the incoming latitude and longitude values
+    console.log("Received longitude:", longitude);
+    console.log("Received latitude:", latitude);
+    
+    // Validate and format the longitude and latitude
+    const formattedLongitude = parseFloat(longitude).toFixed(6);
+    const formattedLatitude = parseFloat(latitude).toFixed(6);
+    
+    if (isNaN(formattedLongitude) || isNaN(formattedLatitude)) {
+      return res.status(400).json({ message: "Invalid coordinates" });
+    }
+
+    // Log the formatted values
+    console.log("Formatted longitude:", formattedLongitude);
+    console.log("Formatted latitude:", formattedLatitude);
+
+    const response = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${formattedLongitude},${formattedLatitude}.json`, {
       params: {
         access_token: process.env.MAPBOX_ACCESS_TOKEN,
       },
     });
+
     res.json(response.data);
   } catch (error) {
-    console.error("Error fetching reverse geocode:", error);
+    console.error("Error fetching reverse geocode:", error.response ? error.response.data : error.message);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
 
-// Retrieve a Suggested Feature
-router.get('/mapbox/retrieve/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const response = await axios.get(`https://api.mapbox.com/search/searchbox/v1/retrieve/${id}`, {
-      params: {
-        access_token: process.env.MAPBOX_ACCESS_TOKEN
-      }
-    });
-    res.json(response.data);
-  } catch (error) {
-    console.error("Error retrieving feature:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
 
 // Category Search API
 router.get('/mapbox/categories', async (req, res) => {
@@ -675,12 +678,12 @@ router.get('/mapbox/categories', async (req, res) => {
     const response = await axios.get('https://api.mapbox.com/search/searchbox/v1/list/category', {
       params: {
         language,
-        access_token: process.env.MAPBOX_ACCESS_TOKEN
+        access_token: process.env.MAPBOX_ACCESS_TOKEN // Ensure this is correctly set
       }
     });
     res.json(response.data);
   } catch (error) {
-    console.error("Error fetching category list:", error);
+    console.error("Error fetching category list:", error.response ? error.response.data : error.message);
     res.status(500).json({ message: "Internal server error" });
   }
 });
