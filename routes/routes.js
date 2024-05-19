@@ -220,6 +220,7 @@ router.post("/dangerzones/add", async (req, res) => {
   }
 });
 
+
 router.get('/dangerzones/:id', async (req, res) => {
   try {
     const dangerZone = await DangerZone.findById(req.params.id).populate("markers");
@@ -302,20 +303,20 @@ router.get('/dangermarkers/:id', async (req, res) => {
 });
 
 // Add a danger marker
-router.post('/dangermarkers/add', async (req, res) => {
+router.post("/dangermarkers/add", async (req, res) => {
   try {
     const { coordinates, description, place_name, context, exception } = req.body;
     if (!description.trim()) {
-      return res.status(400).json({ success: false, error: 'Description cannot be empty' });
+      return res.status(400).json({ success: false, error: "Description cannot be empty" });
     }
     const newMarker = await DangerMarker.create({ coordinates, description, place_name, context, exception });
     res.status(201).json({
       success: true,
-      message: 'Danger marker added successfully',
+      message: "Danger marker added successfully",
       data: newMarker,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to add danger marker' });
+    res.status(500).json({ success: false, error: "Failed to add danger marker" });
   }
 });
 
@@ -463,23 +464,22 @@ router.get('/safetymarkers/:id', async (req, res) => {
   }
 });
 
-router.post('/safetymarkers/add', async (req, res) => {
+router.post("/safetymarkers/add", async (req, res) => {
   try {
     const { coordinates, place_name, context } = req.body;
 
-    // Check if coordinates are valid
-    if (!Array.isArray(coordinates) || coordinates.length !== 2 || !coordinates.every(coord => typeof coord === 'number')) {
-      return res.status(400).json({ success: false, error: 'Invalid coordinates' });
+    if (!Array.isArray(coordinates) || coordinates.length !== 2 || !coordinates.every(coord => typeof coord === "number")) {
+      return res.status(400).json({ success: false, error: "Invalid coordinates" });
     }
 
     const newMarker = await SafetyMarker.create({ coordinates, place_name, context });
     res.status(201).json({
       success: true,
-      message: 'Safety marker added successfully',
+      message: "Safety marker added successfully",
       data: newMarker,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to add safety marker' });
+    res.status(500).json({ success: false, error: "Failed to add safety marker" });
   }
 });
 
