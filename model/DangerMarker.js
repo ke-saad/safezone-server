@@ -7,6 +7,8 @@ const dangerMarkerSchema = new mongoose.Schema({
     required: true
   },
   description: String,
+  place_name: String,
+  context: [mongoose.Schema.Types.Mixed],
   zone: { type: mongoose.Schema.Types.ObjectId, ref: "DangerZone" },
   timestamp: { type: Date, default: Date.now }
 });

@@ -220,7 +220,7 @@ router.post("/dangerzones/add", async (req, res) => {
   }
 });
 
-router.get("/dangerzones/:id", async (req, res) => {
+router.get('/dangerzones/:id', async (req, res) => {
   try {
     const dangerZone = await DangerZone.findById(req.params.id).populate("markers");
     if (!dangerZone) {
@@ -301,13 +301,14 @@ router.get('/dangermarkers/:id', async (req, res) => {
   }
 });
 
+// Add a danger marker
 router.post('/dangermarkers/add', async (req, res) => {
   try {
-    const { coordinates, description } = req.body;
+    const { coordinates, description, place_name, context, exception } = req.body;
     if (!description.trim()) {
       return res.status(400).json({ success: false, error: 'Description cannot be empty' });
     }
-    const newMarker = await DangerMarker.create({ coordinates, description });
+    const newMarker = await DangerMarker.create({ coordinates, description, place_name, context, exception });
     res.status(201).json({
       success: true,
       message: 'Danger marker added successfully',
@@ -458,20 +459,20 @@ router.get('/safetymarkers/:id', async (req, res) => {
     }
     res.json(safetyMarker);
   } catch (error) {
-    res.status500().json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
 router.post('/safetymarkers/add', async (req, res) => {
   try {
-    const { coordinates } = req.body;
+    const { coordinates, place_name, context } = req.body;
 
     // Check if coordinates are valid
     if (!Array.isArray(coordinates) || coordinates.length !== 2 || !coordinates.every(coord => typeof coord === 'number')) {
       return res.status(400).json({ success: false, error: 'Invalid coordinates' });
     }
 
-    const newMarker = await SafetyMarker.create({ coordinates });
+    const newMarker = await SafetyMarker.create({ coordinates, place_name, context });
     res.status(201).json({
       success: true,
       message: 'Safety marker added successfully',
@@ -517,7 +518,7 @@ router.get("/activityLogs", async (req, res) => {
     const activityLogs = await ActivityLog.find();
     res.json(activityLogs);
   } catch (error) {
-    res.status500().json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -572,7 +573,7 @@ router.get("/alerts", async (req, res) => {
     const alerts = await Alert.find();
     res.json(alerts);
   } catch (error) {
-    res.status500().json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -581,7 +582,7 @@ router.post("/alerts", async (req, res) => {
     const newAlert = await Alert.create(req.body);
     res.status(201).json(newAlert);
   } catch (error) {
-    res.status500().json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -593,7 +594,7 @@ router.get("/alerts/:id", async (req, res) => {
     }
     res.json(alert);
   } catch (error) {
-    res.status500().json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -605,7 +606,7 @@ router.put("/alerts/:id", async (req, res) => {
     }
     res.json(updatedAlert);
   } catch (error) {
-    res.status500().json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -617,7 +618,24 @@ router.delete("/alerts/:id", async (req, res) => {
     }
     res.json({ message: "Alert deleted successfully" });
   } catch (error) {
-    res.status500().json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Fetch marker details by ID
+router.get('/markers/:id', async (req, res) => {
+  try {
+    const marker = await DangerMarker.findById(req.params.id).lean();
+    if (!marker) {
+      marker = await SafetyMarker.findById(req.params.id).lean();
+      if (!marker) {
+        return res.status(404).json({ message: 'Marker not found' });
+      }
+    }
+    res.json(marker);
+  } catch (error) {
+    console.error('Error fetching marker details:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -627,17 +645,16 @@ router.delete("/alerts/:id", async (req, res) => {
 router.get('/mapbox/forward', async (req, res) => {
   try {
     const { q, limit } = req.query;
-    const response = await axios.get('https://api.mapbox.com/search/searchbox/v1/forward', {
+    const response = await axios.get('https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(q) + '.json', {
       params: {
-        q,
-        limit,
-        access_token: process.env.MAPBOX_ACCESS_TOKEN, // Ensure this is correctly set
+        access_token: process.env.MAPBOX_ACCESS_TOKEN,
+        limit
       }
     });
     res.json(response.data);
   } catch (error) {
     console.error("Error fetching forward geocode:", error.response ? error.response.data : error.message);
-    res.status500().json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -671,7 +688,7 @@ router.get('/mapbox/reverse-geocode', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     console.error("Error fetching reverse geocode:", error.response ? error.response.data : error.message);
-    res.status500().json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -688,7 +705,7 @@ router.get('/mapbox/categories', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     console.error("Error fetching category list:", error.response ? error.response.data : error.message);
-    res.status500().json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
