@@ -33,6 +33,12 @@ router.post("/register", async (req, res) => {
       isAdmin: req.body.isAdmin || false,
     });
 
+    // Create an initial activity log for the new user
+    await ActivityLog.create({
+      action: "User registered",
+      username: req.body.username
+    });
+
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
@@ -515,7 +521,9 @@ router.delete("/safetymarkers/:id", async (req, res) => {
 // Activity Logs Routes
 router.get("/activityLogs", async (req, res) => {
   try {
-    const activityLogs = await ActivityLog.find();
+    const { username } = req.query;
+    const query = username ? { username } : {};
+    const activityLogs = await ActivityLog.find(query);
     res.json(activityLogs);
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
@@ -539,6 +547,17 @@ router.get("/activityLogs/:id", async (req, res) => {
     }
     res.json(activityLog);
   } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.get("/activityLogs/user/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
+    const logs = await ActivityLog.find({ username }).sort({ timestamp: -1 });
+    res.json(logs);
+  } catch (error) {
+    console.error("Error fetching user activity logs:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
