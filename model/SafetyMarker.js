@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 const SafeZone = require("./SafeZone");
 
 const safetyMarkerSchema = new mongoose.Schema({
@@ -23,5 +23,5 @@ safetyMarkerSchema.post("findOneAndDelete", async function (doc) {
   }
 });
 
-const SafetyMarker = mongoose.model("SafetyMarker", safetyMarkerSchema);
+const SafetyMarker = mongoose.models.SafetyMarker || mongoose.model("SafetyMarker", safetyMarkerSchema);
 module.exports = SafetyMarker;

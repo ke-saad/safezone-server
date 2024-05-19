@@ -205,15 +205,14 @@ router.post("/dangerzones/add", async (req, res) => {
     }
 
     const markerDocs = await DangerMarker.insertMany(markers.map((marker) => ({ ...marker })));
-
     const createdZone = await DangerZone.create({
-      markers: markerDocs.map((marker) => marker._id)
+      markers: markerDocs.map((marker) => marker._id),
     });
 
     res.status(201).json({
       success: true,
       message: "Danger zone added successfully",
-      data: createdZone
+      data: { zone: createdZone },
     });
   } catch (error) {
     console.error("Error adding danger zone:", error);
@@ -262,16 +261,17 @@ router.put("/dangerzones/:id", async (req, res) => {
 
 router.delete("/dangerzones/:id", async (req, res) => {
   try {
-    const zoneId = req.params.id;
+    const deletedZone = await DangerZone.findByIdAndDelete(req.params.id);
 
-    await DangerMarker.deleteMany({ zone: zoneId });
-
-    const deletedZone = await DangerZone.findByIdAndDelete(zoneId);
     if (!deletedZone) {
       return res.status(404).json({ message: "Danger zone not found" });
     }
+
+    await DangerMarker.deleteMany({ zone: deletedZone._id });
+
     res.json({
-      message: "Danger zone and associated markers deleted successfully",
+      success: true,
+      message: "Danger zone and associated markers deleted successfully"
     });
   } catch (error) {
     console.error("Error deleting danger zone:", error);
@@ -335,15 +335,15 @@ router.put("/dangermarkers/:id", async (req, res) => {
   }
 });
 
-router.delete('/dangermarkers/:id', async (req, res) => {
+router.delete("/dangermarkers/:id", async (req, res) => {
   try {
-    const marker = await DangerMarker.findByIdAndDelete(req.params.id);
-    if (!marker) {
-      return res.status(404).json({ message: 'Danger marker not found' });
+    const deletedMarker = await DangerMarker.findByIdAndDelete(req.params.id);
+    if (!deletedMarker) {
+      return res.status(404).json({ message: "Danger marker not found" });
     }
-    res.json({ message: 'Danger marker deleted successfully' });
+    res.json({ message: "Danger marker deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -366,7 +366,6 @@ router.post("/safezones/add", async (req, res) => {
     }
 
     const markerDocs = await SafetyMarker.insertMany(markers.map((marker) => ({ ...marker })));
-
     const createdZone = await SafeZone.create({
       markers: markerDocs.map((marker) => marker._id),
     });
@@ -374,7 +373,7 @@ router.post("/safezones/add", async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Safe zone added successfully",
-      data: createdZone,
+      data: { zone: createdZone },
     });
   } catch (error) {
     console.error("Error adding safe zone:", error);
@@ -423,16 +422,17 @@ router.put("/safezones/:id", async (req, res) => {
 
 router.delete("/safezones/:id", async (req, res) => {
   try {
-    const zoneId = req.params.id;
+    const deletedZone = await SafeZone.findByIdAndDelete(req.params.id);
 
-    await SafetyMarker.deleteMany({ zone: zoneId });
-
-    const deletedZone = await SafeZone.findByIdAndDelete(zoneId);
     if (!deletedZone) {
       return res.status(404).json({ message: "Safe zone not found" });
     }
+
+    await SafetyMarker.deleteMany({ zone: deletedZone._id });
+
     res.json({
-      message: "Safe zone and associated markers deleted successfully",
+      success: true,
+      message: "Safe zone and associated markers deleted successfully"
     });
   } catch (error) {
     console.error("Error deleting safe zone:", error);
@@ -458,14 +458,20 @@ router.get('/safetymarkers/:id', async (req, res) => {
     }
     res.json(safetyMarker);
   } catch (error) {
-    res.status(500).json({ message: 'Internal server error' });
+    res.status500().json({ message: 'Internal server error' });
   }
 });
 
 router.post('/safetymarkers/add', async (req, res) => {
   try {
-    const { coordinates, description } = req.body;
-    const newMarker = await SafetyMarker.create({ coordinates, description });
+    const { coordinates } = req.body;
+
+    // Check if coordinates are valid
+    if (!Array.isArray(coordinates) || coordinates.length !== 2 || !coordinates.every(coord => typeof coord === 'number')) {
+      return res.status(400).json({ success: false, error: 'Invalid coordinates' });
+    }
+
+    const newMarker = await SafetyMarker.create({ coordinates });
     res.status(201).json({
       success: true,
       message: 'Safety marker added successfully',
@@ -493,15 +499,15 @@ router.put("/safetymarkers/:id", async (req, res) => {
   }
 });
 
-router.delete('/safetymarkers/:id', async (req, res) => {
+router.delete("/safetymarkers/:id", async (req, res) => {
   try {
-    const marker = await SafetyMarker.findByIdAndDelete(req.params.id);
-    if (!marker) {
-      return res.status(404).json({ message: 'Safety marker not found' });
+    const deletedMarker = await SafetyMarker.findByIdAndDelete(req.params.id);
+    if (!deletedMarker) {
+      return res.status(404).json({ message: "Safety marker not found" });
     }
-    res.json({ message: 'Safety marker deleted successfully' });
+    res.json({ message: "Safety marker deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -511,7 +517,7 @@ router.get("/activityLogs", async (req, res) => {
     const activityLogs = await ActivityLog.find();
     res.json(activityLogs);
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    res.status500().json({ message: "Internal server error" });
   }
 });
 
@@ -566,7 +572,7 @@ router.get("/alerts", async (req, res) => {
     const alerts = await Alert.find();
     res.json(alerts);
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    res.status500().json({ message: "Internal server error" });
   }
 });
 
@@ -575,7 +581,7 @@ router.post("/alerts", async (req, res) => {
     const newAlert = await Alert.create(req.body);
     res.status(201).json(newAlert);
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    res.status500().json({ message: "Internal server error" });
   }
 });
 
@@ -587,7 +593,7 @@ router.get("/alerts/:id", async (req, res) => {
     }
     res.json(alert);
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    res.status500().json({ message: "Internal server error" });
   }
 });
 
@@ -599,7 +605,7 @@ router.put("/alerts/:id", async (req, res) => {
     }
     res.json(updatedAlert);
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    res.status500().json({ message: "Internal server error" });
   }
 });
 
@@ -611,7 +617,7 @@ router.delete("/alerts/:id", async (req, res) => {
     }
     res.json({ message: "Alert deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    res.status500().json({ message: "Internal server error" });
   }
 });
 
@@ -631,7 +637,7 @@ router.get('/mapbox/forward', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     console.error("Error fetching forward geocode:", error.response ? error.response.data : error.message);
-    res.status(500).json({ message: "Internal server error" });
+    res.status500().json({ message: "Internal server error" });
   }
 });
 
@@ -665,11 +671,9 @@ router.get('/mapbox/reverse-geocode', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     console.error("Error fetching reverse geocode:", error.response ? error.response.data : error.message);
-    res.status(500).json({ message: "Internal server error" });
+    res.status500().json({ message: "Internal server error" });
   }
 });
-
-
 
 // Category Search API
 router.get('/mapbox/categories', async (req, res) => {
@@ -684,7 +688,7 @@ router.get('/mapbox/categories', async (req, res) => {
     res.json(response.data);
   } catch (error) {
     console.error("Error fetching category list:", error.response ? error.response.data : error.message);
-    res.status(500).json({ message: "Internal server error" });
+    res.status500().json({ message: "Internal server error" });
   }
 });
 

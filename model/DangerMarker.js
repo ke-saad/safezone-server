@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 const DangerZone = require("./DangerZone");
 
 const dangerMarkerSchema = new mongoose.Schema({
@@ -23,5 +23,5 @@ dangerMarkerSchema.post("findOneAndDelete", async function (doc) {
   }
 });
 
-const DangerMarker = mongoose.model("DangerMarker", dangerMarkerSchema);
+const DangerMarker = mongoose.models.DangerMarker || mongoose.model("DangerMarker", dangerMarkerSchema);
 module.exports = DangerMarker;

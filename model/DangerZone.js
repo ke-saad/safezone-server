@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const dangerZoneSchema = new mongoose.Schema({
   markers: [{
@@ -8,5 +8,5 @@ const dangerZoneSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 }, { collection: "dangerzones" });
 
-const DangerZone = mongoose.model("DangerZone", dangerZoneSchema);
+const DangerZone = mongoose.models.DangerZone || mongoose.model("DangerZone", dangerZoneSchema);
 module.exports = DangerZone;
