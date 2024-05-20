@@ -711,21 +711,35 @@ router.get('/mapbox/reverse-geocode', async (req, res) => {
   }
 });
 
-// Category Search API
-router.get('/mapbox/categories', async (req, res) => {
+// Itinerary Calculation API
+router.post('/calculate-itinerary', async (req, res) => {
   try {
-    const { language } = req.query;
-    const response = await axios.get('https://api.mapbox.com/search/searchbox/v1/list/category', {
-      params: {
-        language,
-        access_token: process.env.MAPBOX_ACCESS_TOKEN // Ensure this is correctly set
-      }
-    });
-    res.json(response.data);
+    const { startCoordinates, endCoordinates, profile } = req.body;
+
+    // Construct the Mapbox Directions API URL
+    const coordinates = `${startCoordinates[1]},${startCoordinates[0]};${endCoordinates[1]},${endCoordinates[0]}`;
+    const mapboxUrl = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coordinates}`;
+
+    // Parameters for the API request
+    const params = {
+      access_token: process.env.MAPBOX_ACCESS_TOKEN
+    };
+
+    // Make the API request
+    const itineraryResponse = await axios.get(mapboxUrl, { params });
+
+    const itinerary = itineraryResponse.data;
+
+    res.status(200).json({ itinerary });
   } catch (error) {
-    console.error("Error fetching category list:", error.response ? error.response.data : error.message);
-    res.status(500).json({ message: "Internal server error" });
+    console.error('Error calculating itinerary:', error);
+    if (error.response && error.response.status === 403) {
+      res.status(403).json({ message: 'Forbidden. Check your Mapbox access token.' });
+    } else {
+      res.status(500).json({ message: 'Internal server error' });
+    }
   }
 });
+
 
 module.exports = router;
