@@ -759,35 +759,23 @@ router.get('/mapbox/forward', async (req, res) => {
 router.get('/mapbox/reverse-geocode', async (req, res) => {
   try {
     const { longitude, latitude } = req.query;
-    
-    // Log the incoming latitude and longitude values
-    console.log("Received longitude:", longitude);
-    console.log("Received latitude:", latitude);
-    
-    // Validate and format the longitude and latitude
     const formattedLongitude = parseFloat(longitude).toFixed(6);
     const formattedLatitude = parseFloat(latitude).toFixed(6);
-    
     if (isNaN(formattedLongitude) || isNaN(formattedLatitude)) {
       return res.status(400).json({ message: "Invalid coordinates" });
     }
-
-    // Log the formatted values
-    console.log("Formatted longitude:", formattedLongitude);
-    console.log("Formatted latitude:", formattedLatitude);
-
     const response = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${formattedLongitude},${formattedLatitude}.json`, {
       params: {
         access_token: process.env.MAPBOX_ACCESS_TOKEN,
       },
     });
-
     res.json(response.data);
   } catch (error) {
     console.error("Error fetching reverse geocode:", error.response ? error.response.data : error.message);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 // Itinerary Calculation API
 router.post('/calculate-itinerary', async (req, res) => {
