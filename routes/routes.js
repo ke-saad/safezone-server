@@ -210,9 +210,17 @@ router.post("/dangerzones/add", async (req, res) => {
       return res.status(400).json({ error: "Exactly 10 markers are required." });
     }
 
-    const markerDocs = await DangerMarker.insertMany(markers.map((marker) => ({ ...marker })));
     const createdZone = await DangerZone.create({
-      markers: markerDocs.map((marker) => marker._id),
+      markers: markers.map(marker => ({
+        coordinates: marker.coordinates,
+        description: marker.description,
+        place_name: marker.place_name,
+        context: marker.context,
+        timestamp: marker.timestamp,
+        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", // Example extraction logic
+        country_name: marker.context.find(ctx => ctx.wikidata === 'Q262')?.text || "",
+        short_code: marker.context.find(ctx => ctx.wikidata === 'Q262')?.short_code || "",
+      })),
     });
 
     res.status(201).json({
@@ -227,6 +235,8 @@ router.post("/dangerzones/add", async (req, res) => {
 });
 
 
+
+// Example route in your backend
 router.get('/dangerzones/:id', async (req, res) => {
   try {
     const dangerZone = await DangerZone.findById(req.params.id).populate("markers");
@@ -244,27 +254,37 @@ router.put("/dangerzones/:id", async (req, res) => {
   try {
     const { markers } = req.body;
     if (markers && markers.length === 10) {
-      await DangerMarker.deleteMany({ zone: req.params.id });
-      const markerDocs = await DangerMarker.insertMany(
-        markers.map((marker) => ({ ...marker, zone: req.params.id }))
-      );
-      req.body.markers = markerDocs.map((marker) => marker._id);
-    }
+      const updatedMarkers = markers.map(marker => ({
+        coordinates: marker.coordinates,
+        description: marker.description,
+        place_name: marker.place_name,
+        context: marker.context,
+        timestamp: marker.timestamp,
+        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", // Example extraction logic
+        country_name: marker.context.find(ctx => ctx.wikidata === 'Q262')?.text || "",
+        short_code: marker.context.find(ctx => ctx.wikidata === 'Q262')?.short_code || "",
+      }));
 
-    const updatedDangerZone = await DangerZone.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    ).populate("markers");
-    if (!updatedDangerZone) {
-      return res.status(404).json({ message: "Danger zone not found" });
+      const updatedDangerZone = await DangerZone.findByIdAndUpdate(
+        req.params.id,
+        { markers: updatedMarkers },
+        { new: true }
+      );
+
+      if (!updatedDangerZone) {
+        return res.status(404).json({ message: "Danger zone not found" });
+      }
+
+      res.json(updatedDangerZone);
+    } else {
+      res.status(400).json({ message: "Markers array should contain exactly 10 markers." });
     }
-    res.json(updatedDangerZone);
   } catch (error) {
     console.error("Error updating danger zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 router.delete("/dangerzones/:id", async (req, res) => {
   try {
@@ -311,11 +331,19 @@ router.get('/dangermarkers/:id', async (req, res) => {
 // Add a danger marker
 router.post("/dangermarkers/add", async (req, res) => {
   try {
-    const { coordinates, description, place_name, context, exception } = req.body;
-    if (!description.trim()) {
-      return res.status(400).json({ success: false, error: "Description cannot be empty" });
-    }
-    const newMarker = await DangerMarker.create({ coordinates, description, place_name, context, exception });
+    const { coordinates, description, place_name, context, timestamp } = req.body;
+
+    const newMarker = await DangerMarker.create({
+      coordinates,
+      description,
+      place_name,
+      context,
+      timestamp,
+      region_id: context.find(ctx => ctx.id.includes("region"))?.id || "",
+      country_name: context.find(ctx => ctx.id.includes("country"))?.text || "",
+      short_code: context.find(ctx => ctx.id.includes("country"))?.short_code || "",
+    });
+
     res.status(201).json({
       success: true,
       message: "Danger marker added successfully",
@@ -326,17 +354,31 @@ router.post("/dangermarkers/add", async (req, res) => {
   }
 });
 
+
 router.put("/dangermarkers/:id", async (req, res) => {
   try {
-    const updatedDangerMarker = await DangerMarker.findByIdAndUpdate(
+    const { coordinates, description, place_name, context, timestamp } = req.body;
+
+    const updatedMarker = await DangerMarker.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      {
+        coordinates,
+        description,
+        place_name,
+        context,
+        timestamp,
+        region_id: context.find(ctx => ctx.id.includes("region"))?.id || "",
+        country_name: context.find(ctx => ctx.id.includes("country"))?.text || "",
+        short_code: context.find(ctx => ctx.id.includes("country"))?.short_code || "",
+      },
       { new: true }
     );
-    if (!updatedDangerMarker) {
+
+    if (!updatedMarker) {
       return res.status(404).json({ message: "Danger marker not found" });
     }
-    res.json(updatedDangerMarker);
+
+    res.json(updatedMarker);
   } catch (error) {
     console.error("Error updating danger marker:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -373,9 +415,16 @@ router.post("/safezones/add", async (req, res) => {
       return res.status(400).json({ error: "Exactly 10 markers are required." });
     }
 
-    const markerDocs = await SafetyMarker.insertMany(markers.map((marker) => ({ ...marker })));
     const createdZone = await SafeZone.create({
-      markers: markerDocs.map((marker) => marker._id),
+      markers: markers.map(marker => ({
+        coordinates: marker.coordinates,
+        place_name: marker.place_name,
+        context: marker.context,
+        timestamp: marker.timestamp,
+        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", // Example extraction logic
+        country_name: marker.context.find(ctx => ctx.wikidata === 'Q262')?.text || "",
+        short_code: marker.context.find(ctx => ctx.wikidata === 'Q262')?.short_code || "",
+      })),
     });
 
     res.status(201).json({
@@ -388,6 +437,7 @@ router.post("/safezones/add", async (req, res) => {
     res.status(500).json({ success: false, error: "Failed to add safe zone" });
   }
 });
+
 
 router.get("/safezones/:id", async (req, res) => {
   try {
@@ -406,27 +456,36 @@ router.put("/safezones/:id", async (req, res) => {
   try {
     const { markers } = req.body;
     if (markers && markers.length === 10) {
-      await SafetyMarker.deleteMany({ zone: req.params.id });
-      const markerDocs = await SafetyMarker.insertMany(
-        markers.map((marker) => ({ ...marker, zone: req.params.id }))
-      );
-      req.body.markers = markerDocs.map((marker) => marker._id);
-    }
+      const updatedMarkers = markers.map(marker => ({
+        coordinates: marker.coordinates,
+        place_name: marker.place_name,
+        context: marker.context,
+        timestamp: marker.timestamp,
+        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", // Example extraction logic
+        country_name: marker.context.find(ctx => ctx.wikidata === 'Q262')?.text || "",
+        short_code: marker.context.find(ctx => ctx.wikidata === 'Q262')?.short_code || "",
+      }));
 
-    const updatedSafeZone = await SafeZone.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    ).populate("markers");
-    if (!updatedSafeZone) {
-      return res.status(404).json({ message: "Safe zone not found" });
+      const updatedSafeZone = await SafeZone.findByIdAndUpdate(
+        req.params.id,
+        { markers: updatedMarkers },
+        { new: true }
+      );
+
+      if (!updatedSafeZone) {
+        return res.status(404).json({ message: "Safe zone not found" });
+      }
+
+      res.json(updatedSafeZone);
+    } else {
+      res.status(400).json({ message: "Markers array should contain exactly 10 markers." });
     }
-    res.json(updatedSafeZone);
   } catch (error) {
     console.error("Error updating safe zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 router.delete("/safezones/:id", async (req, res) => {
   try {
@@ -472,13 +531,18 @@ router.get('/safetymarkers/:id', async (req, res) => {
 
 router.post("/safetymarkers/add", async (req, res) => {
   try {
-    const { coordinates, place_name, context } = req.body;
+    const { coordinates, place_name, context, timestamp } = req.body;
 
-    if (!Array.isArray(coordinates) || coordinates.length !== 2 || !coordinates.every(coord => typeof coord === "number")) {
-      return res.status(400).json({ success: false, error: "Invalid coordinates" });
-    }
+    const newMarker = await SafetyMarker.create({
+      coordinates,
+      place_name,
+      context,
+      timestamp,
+      region_id: context.find(ctx => ctx.id.includes("region"))?.id || "",
+      country_name: context.find(ctx => ctx.id.includes("country"))?.text || "",
+      short_code: context.find(ctx => ctx.id.includes("country"))?.short_code || "",
+    });
 
-    const newMarker = await SafetyMarker.create({ coordinates, place_name, context });
     res.status(201).json({
       success: true,
       message: "Safety marker added successfully",
@@ -489,22 +553,36 @@ router.post("/safetymarkers/add", async (req, res) => {
   }
 });
 
+
 router.put("/safetymarkers/:id", async (req, res) => {
   try {
-    const updatedSafetyMarker = await SafetyMarker.findByIdAndUpdate(
+    const { coordinates, place_name, context, timestamp } = req.body;
+
+    const updatedMarker = await SafetyMarker.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      {
+        coordinates,
+        place_name,
+        context,
+        timestamp,
+        region_id: context.find(ctx => ctx.id.includes("region"))?.id || "",
+        country_name: context.find(ctx => ctx.id.includes("country"))?.text || "",
+        short_code: context.find(ctx => ctx.id.includes("country"))?.short_code || "",
+      },
       { new: true }
     );
-    if (!updatedSafetyMarker) {
+
+    if (!updatedMarker) {
       return res.status(404).json({ message: "Safety marker not found" });
     }
-    res.json(updatedSafetyMarker);
+
+    res.json(updatedMarker);
   } catch (error) {
     console.error("Error updating safety marker:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 
 router.delete("/safetymarkers/:id", async (req, res) => {
   try {

@@ -9,8 +9,11 @@ const dangerMarkerSchema = new mongoose.Schema({
   description: String,
   place_name: String,
   context: [mongoose.Schema.Types.Mixed],
-  zone: { type: mongoose.Schema.Types.ObjectId, ref: "DangerZone" },
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
+  region_id: String,
+  country_name: String,
+  short_code: String,
+  zone: { type: mongoose.Schema.Types.ObjectId, ref: "DangerZone" }
 });
 
 dangerMarkerSchema.post("findOneAndDelete", async function (doc) {

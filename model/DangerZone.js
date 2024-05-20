@@ -2,8 +2,14 @@ const mongoose = require('mongoose');
 
 const dangerZoneSchema = new mongoose.Schema({
   markers: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "DangerMarker"
+    coordinates: [Number],
+    description: String,
+    place_name: String,
+    context: [mongoose.Schema.Types.Mixed],
+    timestamp: Date,
+    region_id: String,
+    country_name: String,
+    short_code: String,
   }],
   timestamp: { type: Date, default: Date.now }
 }, { collection: "dangerzones" });

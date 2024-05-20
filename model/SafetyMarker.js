@@ -6,11 +6,13 @@ const safetyMarkerSchema = new mongoose.Schema({
     type: [Number],
     required: true
   },
-  description: String,
   place_name: String,
   context: [mongoose.Schema.Types.Mixed],
-  zone: { type: mongoose.Schema.Types.ObjectId, ref: "SafeZone" },
-  timestamp: { type: Date, default: Date.now }
+  timestamp: { type: Date, default: Date.now },
+  region_id: String,
+  country_name: String,
+  short_code: String,
+  zone: { type: mongoose.Schema.Types.ObjectId, ref: "SafeZone" }
 });
 
 safetyMarkerSchema.post("findOneAndDelete", async function (doc) {
