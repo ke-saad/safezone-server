@@ -1,3 +1,4 @@
+// E:\S8\PFA - SafeZone\safezone_app_github\safezone_from_github\safezone\server\index.js
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");

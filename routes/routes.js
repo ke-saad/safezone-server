@@ -1,3 +1,4 @@
+// E:\S8\PFA - SafeZone\safezone_app_github\safezone_from_github\safezone\server\routes\routes.js
 require('dotenv').config();
 const express = require("express");
 const router = express.Router();
@@ -12,6 +13,27 @@ const DangerZone = require("../model/DangerZone");
 const SafeZone = require("../model/SafeZone");
 const DangerMarker = require("../model/DangerMarker");
 const SafetyMarker = require("../model/SafetyMarker");
+
+// Middleware to verify token
+const verifyToken = (req, res, next) => {
+  const token = req.headers["authorization"];
+  if (!token) {
+    return res.status(403).json({ message: "No token provided" });
+  }
+
+  jwt.verify(token.split(' ')[1], "mySecretKey123", (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    req.userId = decoded.userId;
+    next();
+  });
+};
+
+// Example protected route
+router.get("/protected", verifyToken, (req, res) => {
+  res.json({ message: "This is a protected route" });
+});
 
 // User Registration
 router.post("/register", async (req, res) => {
@@ -234,9 +256,6 @@ router.post("/dangerzones/add", async (req, res) => {
   }
 });
 
-
-
-// Example route in your backend
 router.get('/dangerzones/:id', async (req, res) => {
   try {
     const dangerZone = await DangerZone.findById(req.params.id).populate("markers");
@@ -284,7 +303,6 @@ router.put("/dangerzones/:id", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
 
 router.delete("/dangerzones/:id", async (req, res) => {
   try {
@@ -353,7 +371,6 @@ router.post("/dangermarkers/add", async (req, res) => {
     res.status(500).json({ success: false, error: "Failed to add danger marker" });
   }
 });
-
 
 router.put("/dangermarkers/:id", async (req, res) => {
   try {
@@ -438,7 +455,6 @@ router.post("/safezones/add", async (req, res) => {
   }
 });
 
-
 router.get("/safezones/:id", async (req, res) => {
   try {
     const safeZone = await SafeZone.findById(req.params.id).populate("markers");
@@ -485,7 +501,6 @@ router.put("/safezones/:id", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
 
 router.delete("/safezones/:id", async (req, res) => {
   try {
@@ -553,7 +568,6 @@ router.post("/safetymarkers/add", async (req, res) => {
   }
 });
 
-
 router.put("/safetymarkers/:id", async (req, res) => {
   try {
     const { coordinates, place_name, context, timestamp } = req.body;
@@ -582,7 +596,6 @@ router.put("/safetymarkers/:id", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
 
 router.delete("/safetymarkers/:id", async (req, res) => {
   try {
@@ -776,7 +789,6 @@ router.get('/mapbox/reverse-geocode', async (req, res) => {
   }
 });
 
-
 // Itinerary Calculation API
 router.post('/calculate-itinerary', async (req, res) => {
   try {
@@ -806,6 +818,5 @@ router.post('/calculate-itinerary', async (req, res) => {
     }
   }
 });
-
 
 module.exports = router;
