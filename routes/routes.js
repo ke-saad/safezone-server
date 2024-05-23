@@ -14,21 +14,46 @@ const SafeZone = require("../model/SafeZone");
 const DangerMarker = require("../model/DangerMarker");
 const SafetyMarker = require("../model/SafetyMarker");
 
-// Middleware to verify token
 const verifyToken = (req, res, next) => {
-  const token = req.headers["authorization"];
+  const token = req.headers["authorization"]?.split(" ")[1];
   if (!token) {
-    return res.status(403).json({ message: "No token provided" });
+    console.log("No token provided.");
+    return res.status(403).json({ message: "No token provided." });
   }
 
-  jwt.verify(token.split(' ')[1], "mySecretKey123", (err, decoded) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
-      return res.status(401).json({ message: "Unauthorized" });
+      console.log("Failed to authenticate token.", err);
+      return res.status(403).json({ message: "Failed to authenticate token." });
     }
-    req.userId = decoded.userId;
+
+    req.user = decoded; // Assuming `decoded` contains the user information
+    console.log("Token verified:", decoded);
     next();
   });
 };
+
+
+const verifyAdmin = async (req, res, next) => {
+  if (!req.user || !req.user.userId) {
+    console.log("Failed to authenticate token.");
+    return res.status(403).json({ message: "Failed to authenticate token." });
+  }
+
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.isAdmin) {
+      console.log("Admin permissions required. User:", user);
+      return res.status(403).json({ message: "Admin permissions required." });
+    }
+    console.log("Admin verified:", user);
+    next();
+  } catch (error) {
+    console.log("Internal server error", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 
 // Example protected route
 router.get("/protected", verifyToken, (req, res) => {
@@ -80,7 +105,7 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid username or password" });
     }
 
-    const token = jwt.sign({ userId: user._id, role: user.isAdmin ? "admin" : "user" }, "mySecretKey123");
+    const token = jwt.sign({ userId: user._id, role: user.isAdmin ? "admin" : "user" }, process.env.JWT_SECRET);
 
     res.json({ token });
   } catch (error) {
@@ -113,17 +138,13 @@ router.post("/userslogin", async (req, res) => {
 });
 
 // Get User Role
-router.get("/user/role", async (req, res) => {
+router.get("/user/role", verifyToken, async (req, res) => {
   try {
-    const token = req.headers.authorization.split(' ')[1]; // Assuming Bearer schema
-    const decoded = jwt.verify(token, "mySecretKey123");
-    const user = await User.findById(decoded.userId);
-
+    const user = await User.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    res.json({ role: user.isAdmin ? "admin" : "user" });
+    res.json({ role: user.isAdmin ? "admin" : "user", username: user.username });
   } catch (error) {
     res.status(500).json({ message: "Error verifying user role", error });
   }
@@ -180,19 +201,26 @@ router.put("/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { password, ...userData } = req.body;
+
     const user = await User.findById(id);
-
-    if (!user.isAdmin) {
-      const updatedUser = await User.findByIdAndUpdate(id, userData, { new: true });
-      return res.json(updatedUser);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (password) {
+      // If password is provided, compare it with the current hashed password
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (!passwordMatch) {
+        return res.status(401).json({ message: "Incorrect password" });
+      }
 
-    if (!passwordMatch) {
-      return res.status(401).json({ message: "Incorrect password" });
+      // Hash new password if password is being updated
+      if (userData.newPassword) {
+        userData.password = await bcrypt.hash(userData.newPassword, 10);
+      }
     }
 
+    // Update the user data
     const updatedUser = await User.findByIdAndUpdate(id, userData, { new: true });
     return res.json(updatedUser);
   } catch (error) {
@@ -225,7 +253,7 @@ router.get("/dangerzones", async (req, res) => {
   }
 });
 
-router.post("/dangerzones/add", async (req, res) => {
+router.post("/dangerzones/add", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const { markers } = req.body;
     if (!Array.isArray(markers) || markers.length !== 10) {
@@ -239,7 +267,7 @@ router.post("/dangerzones/add", async (req, res) => {
         place_name: marker.place_name,
         context: marker.context,
         timestamp: marker.timestamp,
-        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", // Example extraction logic
+        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "",
         country_name: marker.context.find(ctx => ctx.wikidata === 'Q262')?.text || "",
         short_code: marker.context.find(ctx => ctx.wikidata === 'Q262')?.short_code || "",
       })),
@@ -269,7 +297,7 @@ router.get('/dangerzones/:id', async (req, res) => {
   }
 });
 
-router.put("/dangerzones/:id", async (req, res) => {
+router.put("/dangerzones/:id", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const { markers } = req.body;
     if (markers && markers.length === 10) {
@@ -304,25 +332,76 @@ router.put("/dangerzones/:id", async (req, res) => {
   }
 });
 
-router.delete("/dangerzones/:id", async (req, res) => {
+router.delete("/dangerzones/:id", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const deletedZone = await DangerZone.findByIdAndDelete(req.params.id);
-
     if (!deletedZone) {
       return res.status(404).json({ message: "Danger zone not found" });
     }
 
     await DangerMarker.deleteMany({ zone: deletedZone._id });
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Danger zone and associated markers deleted successfully"
+      message: "Danger zone and associated markers deleted successfully",
     });
   } catch (error) {
     console.error("Error deleting danger zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+// Fetch pending danger zones
+router.get('/pending-dangerzone/:alertId', verifyToken, async (req, res) => {
+  try {
+    const alert = await Alert.findById(req.params.alertId).populate('zone');
+    if (!alert || !alert.zone) {
+      return res.status(404).json({ message: 'Pending danger zone not found' });
+    }
+    res.json(alert.zone);
+  } catch (error) {
+    console.error('Error fetching pending danger zone:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Approve a danger zone
+router.put('/dangerzones/approve/:id', verifyToken, async (req, res) => {
+  try {
+    const updatedZone = await DangerZone.findByIdAndUpdate(
+      req.params.id,
+      { status: 'approved' },
+      { new: true }
+    );
+    if (!updatedZone) {
+      return res.status(404).json({ message: 'Danger zone not found' });
+    }
+    res.json(updatedZone);
+  } catch (error) {
+    console.error('Error approving danger zone:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Disapprove a danger zone
+router.put('/dangerzones/disapprove/:id', verifyToken, async (req, res) => {
+  try {
+    const updatedZone = await DangerZone.findByIdAndUpdate(
+      req.params.id,
+      { status: 'disapproved' },
+      { new: true }
+    );
+    if (!updatedZone) {
+      return res.status(404).json({ message: 'Danger zone not found' });
+    }
+    res.json(updatedZone);
+  } catch (error) {
+    console.error('Error disapproving danger zone:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
 
 // Danger Markers Routes
 router.get("/dangermarkers", async (req, res) => {
@@ -347,14 +426,19 @@ router.get('/dangermarkers/:id', async (req, res) => {
 });
 
 // Add a danger marker
-router.post("/dangermarkers/add", async (req, res) => {
+router.post("/dangermarkers/add", verifyToken, verifyAdmin, async (req, res) => {
   try {
-    const { coordinates, description, place_name, context, timestamp } = req.body;
+    const { coordinates, description, context, timestamp } = req.body;
 
+    // Validate coordinates
+    if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
+      return res.status(400).json({ error: "Invalid coordinates provided." });
+    }
+
+    // Create new marker
     const newMarker = await DangerMarker.create({
       coordinates,
       description,
-      place_name,
       context,
       timestamp,
       region_id: context.find(ctx => ctx.id.includes("region"))?.id || "",
@@ -368,9 +452,11 @@ router.post("/dangermarkers/add", async (req, res) => {
       data: newMarker,
     });
   } catch (error) {
+    console.error("Error adding danger marker:", error); // Improved logging
     res.status(500).json({ success: false, error: "Failed to add danger marker" });
   }
 });
+
 
 router.put("/dangermarkers/:id", async (req, res) => {
   try {
@@ -402,7 +488,7 @@ router.put("/dangermarkers/:id", async (req, res) => {
   }
 });
 
-router.delete("/dangermarkers/:id", async (req, res) => {
+router.delete("/dangermarkers/:id", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const deletedMarker = await DangerMarker.findByIdAndDelete(req.params.id);
     if (!deletedMarker) {
@@ -425,7 +511,7 @@ router.get("/safezones", async (req, res) => {
   }
 });
 
-router.post("/safezones/add", async (req, res) => {
+router.post("/safezones/add", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const { markers } = req.body;
     if (!Array.isArray(markers) || markers.length !== 10) {
@@ -438,7 +524,7 @@ router.post("/safezones/add", async (req, res) => {
         place_name: marker.place_name,
         context: marker.context,
         timestamp: marker.timestamp,
-        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", // Example extraction logic
+        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "",
         country_name: marker.context.find(ctx => ctx.wikidata === 'Q262')?.text || "",
         short_code: marker.context.find(ctx => ctx.wikidata === 'Q262')?.short_code || "",
       })),
@@ -468,7 +554,8 @@ router.get("/safezones/:id", async (req, res) => {
   }
 });
 
-router.put("/safezones/:id", async (req, res) => {
+// Update Safe Zone by ID
+router.put("/safezones/:id", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const { markers } = req.body;
     if (markers && markers.length === 10) {
@@ -502,25 +589,75 @@ router.put("/safezones/:id", async (req, res) => {
   }
 });
 
-router.delete("/safezones/:id", async (req, res) => {
+router.delete("/safezones/:id", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const deletedZone = await SafeZone.findByIdAndDelete(req.params.id);
-
     if (!deletedZone) {
       return res.status(404).json({ message: "Safe zone not found" });
     }
 
     await SafetyMarker.deleteMany({ zone: deletedZone._id });
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Safe zone and associated markers deleted successfully"
+      message: "Safe zone and associated markers deleted successfully",
     });
   } catch (error) {
     console.error("Error deleting safe zone:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+// Fetch specific pending safe zone by alert ID
+router.get('/pending-safezone/:alertId', verifyToken, async (req, res) => {
+  try {
+    const alert = await Alert.findById(req.params.alertId).populate('zone');
+    if (!alert || !alert.zone) {
+      return res.status(404).json({ message: 'Pending safe zone not found' });
+    }
+    res.json(alert.zone);
+  } catch (error) {
+    console.error('Error fetching pending safe zone:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Approve a safe zone
+router.put('/safezones/approve/:id', verifyToken, async (req, res) => {
+  try {
+    const updatedZone = await SafeZone.findByIdAndUpdate(
+      req.params.id,
+      { status: 'approved' },
+      { new: true }
+    );
+    if (!updatedZone) {
+      return res.status(404).json({ message: 'Safe zone not found' });
+    }
+    res.json(updatedZone);
+  } catch (error) {
+    console.error('Error approving safe zone:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Disapprove a safe zone
+router.put('/safezones/disapprove/:id', verifyToken, async (req, res) => {
+  try {
+    const updatedZone = await SafeZone.findByIdAndUpdate(
+      req.params.id,
+      { status: 'disapproved' },
+      { new: true }
+    );
+    if (!updatedZone) {
+      return res.status(404).json({ message: 'Safe zone not found' });
+    }
+    res.json(updatedZone);
+  } catch (error) {
+    console.error('Error disapproving safe zone:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 
 // Safety Markers Routes
 router.get("/safetymarkers", async (req, res) => {
@@ -544,7 +681,7 @@ router.get('/safetymarkers/:id', async (req, res) => {
   }
 });
 
-router.post("/safetymarkers/add", async (req, res) => {
+router.post("/safetymarkers/add", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const { coordinates, place_name, context, timestamp } = req.body;
 
@@ -597,7 +734,7 @@ router.put("/safetymarkers/:id", async (req, res) => {
   }
 });
 
-router.delete("/safetymarkers/:id", async (req, res) => {
+router.delete("/safetymarkers/:id", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const deletedMarker = await SafetyMarker.findByIdAndDelete(req.params.id);
     if (!deletedMarker) {
@@ -732,10 +869,36 @@ router.delete("/alerts/:id", async (req, res) => {
   }
 });
 
+router.post('/alerts/danger', verifyToken, async (req, res) => {
+  try {
+    const { coordinates } = req.body;
+    const userId = req.userId;
+
+    // Create a new alert
+    const newAlert = new Alert({
+      type: "danger",
+      message: `User is in a danger zone at coordinates: ${coordinates}`,
+      userId,
+      status: "pending",
+      zoneType: "DangerZone",
+      zoneData: { coordinates }
+    });
+
+    // Save the alert
+    await newAlert.save();
+
+    // Respond with the created alert
+    res.status(201).json(newAlert);
+  } catch (error) {
+    console.error('Error creating danger alert:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 // Fetch marker details by ID
 router.get('/markers/:id', async (req, res) => {
   try {
-    const marker = await DangerMarker.findById(req.params.id).lean();
+    let marker = await DangerMarker.findById(req.params.id).lean();
     if (!marker) {
       marker = await SafetyMarker.findById(req.params.id).lean();
       if (!marker) {
