@@ -1,4 +1,3 @@
-// E:\S8\PFA - SafeZone\safezone_app_github\safezone_from_github\safezone\server\routes\routes.js
 require('dotenv').config();
 const express = require("express");
 const router = express.Router();
@@ -32,28 +31,6 @@ const verifyToken = (req, res, next) => {
     next();
   });
 };
-
-
-const verifyAdmin = async (req, res, next) => {
-  if (!req.user || !req.user.userId) {
-    console.log("Failed to authenticate token.");
-    return res.status(403).json({ message: "Failed to authenticate token." });
-  }
-
-  try {
-    const user = await User.findById(req.user.userId);
-    if (!user || !user.isAdmin) {
-      console.log("Admin permissions required. User:", user);
-      return res.status(403).json({ message: "Admin permissions required." });
-    }
-    console.log("Admin verified:", user);
-    next();
-  } catch (error) {
-    console.log("Internal server error", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
 
 // Example protected route
 router.get("/protected", verifyToken, (req, res) => {
@@ -253,7 +230,7 @@ router.get("/dangerzones", async (req, res) => {
   }
 });
 
-router.post("/dangerzones/add", verifyToken, verifyAdmin, async (req, res) => {
+router.post("/dangerzones/add", async (req, res) => {
   try {
     const { markers } = req.body;
     if (!Array.isArray(markers) || markers.length !== 10) {
@@ -297,7 +274,7 @@ router.get('/dangerzones/:id', async (req, res) => {
   }
 });
 
-router.put("/dangerzones/:id", verifyToken, verifyAdmin, async (req, res) => {
+router.put("/dangerzones/:id", async (req, res) => {
   try {
     const { markers } = req.body;
     if (markers && markers.length === 10) {
@@ -332,7 +309,7 @@ router.put("/dangerzones/:id", verifyToken, verifyAdmin, async (req, res) => {
   }
 });
 
-router.delete("/dangerzones/:id", verifyToken, verifyAdmin, async (req, res) => {
+router.delete("/dangerzones/:id", async (req, res) => {
   try {
     const deletedZone = await DangerZone.findByIdAndDelete(req.params.id);
     if (!deletedZone) {
@@ -401,8 +378,6 @@ router.put('/dangerzones/disapprove/:id', verifyToken, async (req, res) => {
   }
 });
 
-
-
 // Danger Markers Routes
 router.get("/dangermarkers", async (req, res) => {
   try {
@@ -426,7 +401,7 @@ router.get('/dangermarkers/:id', async (req, res) => {
 });
 
 // Add a danger marker
-router.post("/dangermarkers/add", verifyToken, verifyAdmin, async (req, res) => {
+router.post("/dangermarkers/add", async (req, res) => {
   try {
     const { coordinates, description, context, timestamp } = req.body;
 
@@ -488,7 +463,7 @@ router.put("/dangermarkers/:id", async (req, res) => {
   }
 });
 
-router.delete("/dangermarkers/:id", verifyToken, verifyAdmin, async (req, res) => {
+router.delete("/dangermarkers/:id", async (req, res) => {
   try {
     const deletedMarker = await DangerMarker.findByIdAndDelete(req.params.id);
     if (!deletedMarker) {
@@ -511,7 +486,7 @@ router.get("/safezones", async (req, res) => {
   }
 });
 
-router.post("/safezones/add", verifyToken, verifyAdmin, async (req, res) => {
+router.post("/safezones/add", async (req, res) => {
   try {
     const { markers } = req.body;
     if (!Array.isArray(markers) || markers.length !== 10) {
@@ -555,7 +530,7 @@ router.get("/safezones/:id", async (req, res) => {
 });
 
 // Update Safe Zone by ID
-router.put("/safezones/:id", verifyToken, verifyAdmin, async (req, res) => {
+router.put("/safezones/:id", async (req, res) => {
   try {
     const { markers } = req.body;
     if (markers && markers.length === 10) {
@@ -589,7 +564,7 @@ router.put("/safezones/:id", verifyToken, verifyAdmin, async (req, res) => {
   }
 });
 
-router.delete("/safezones/:id", verifyToken, verifyAdmin, async (req, res) => {
+router.delete("/safezones/:id", async (req, res) => {
   try {
     const deletedZone = await SafeZone.findByIdAndDelete(req.params.id);
     if (!deletedZone) {
@@ -658,7 +633,6 @@ router.put('/safezones/disapprove/:id', verifyToken, async (req, res) => {
   }
 });
 
-
 // Safety Markers Routes
 router.get("/safetymarkers", async (req, res) => {
   try {
@@ -681,7 +655,7 @@ router.get('/safetymarkers/:id', async (req, res) => {
   }
 });
 
-router.post("/safetymarkers/add", verifyToken, verifyAdmin, async (req, res) => {
+router.post("/safetymarkers/add", async (req, res) => {
   try {
     const { coordinates, place_name, context, timestamp } = req.body;
 
@@ -734,7 +708,7 @@ router.put("/safetymarkers/:id", async (req, res) => {
   }
 });
 
-router.delete("/safetymarkers/:id", verifyToken, verifyAdmin, async (req, res) => {
+router.delete("/safetymarkers/:id", async (req, res) => {
   try {
     const deletedMarker = await SafetyMarker.findByIdAndDelete(req.params.id);
     if (!deletedMarker) {
@@ -869,7 +843,7 @@ router.delete("/alerts/:id", async (req, res) => {
   }
 });
 
-router.post('/alerts/danger', verifyToken, async (req, res) => {
+router.post('/alerts/danger', async (req, res) => {
   try {
     const { coordinates } = req.body;
     const userId = req.userId;
