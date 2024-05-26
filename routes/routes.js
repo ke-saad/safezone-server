@@ -26,18 +26,18 @@ const verifyToken = (req, res, next) => {
       return res.status(403).json({ message: "Failed to authenticate token." });
     }
 
-    req.user = decoded; // Assuming `decoded` contains the user information
+    req.user = decoded; 
     console.log("Token verified:", decoded);
     next();
   });
 };
 
-// Example protected route
+
 router.get("/protected", verifyToken, (req, res) => {
   res.json({ message: "This is a protected route" });
 });
 
-// User Registration
+
 router.post("/register", async (req, res) => {
   try {
     if (!req.body.username || !req.body.password) {
@@ -57,7 +57,7 @@ router.post("/register", async (req, res) => {
       isAdmin: req.body.isAdmin || false,
     });
 
-    // Create an initial activity log for the new user
+    
     await ActivityLog.create({
       action: "User registered",
       username: req.body.username
@@ -69,7 +69,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// User Login
+
 router.post("/login", async (req, res) => {
   try {
     const user = await User.findOne({ username: req.body.username });
@@ -90,7 +90,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Users Login (Non-Admin)
+
 router.post("/userslogin", async (req, res) => {
   try {
     const user = await User.findOne({ username: req.body.username });
@@ -114,7 +114,7 @@ router.post("/userslogin", async (req, res) => {
   }
 });
 
-// Get User Role
+
 router.get("/user/role", verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
@@ -127,7 +127,7 @@ router.get("/user/role", verifyToken, async (req, res) => {
   }
 });
 
-// Get All Users
+
 router.get("/users", async (req, res) => {
   try {
     const users = await User.find();
@@ -137,7 +137,7 @@ router.get("/users", async (req, res) => {
   }
 });
 
-// Create New User
+
 router.post("/users", async (req, res) => {
   try {
     const newUser = await User.create(req.body);
@@ -147,7 +147,7 @@ router.post("/users", async (req, res) => {
   }
 });
 
-// Get User by Username
+
 router.get("/users/username/:username", async (req, res) => {
   try {
     const { username } = req.params;
@@ -162,7 +162,7 @@ router.get("/users/username/:username", async (req, res) => {
   }
 });
 
-// Search Users by Query
+
 router.get("/users/search", async (req, res) => {
   try {
     const { query } = req.query;
@@ -173,7 +173,7 @@ router.get("/users/search", async (req, res) => {
   }
 });
 
-// Update User by ID
+
 router.put("/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -185,19 +185,19 @@ router.put("/users/:id", async (req, res) => {
     }
 
     if (password) {
-      // If password is provided, compare it with the current hashed password
+      
       const passwordMatch = await bcrypt.compare(password, user.password);
       if (!passwordMatch) {
         return res.status(401).json({ message: "Incorrect password" });
       }
 
-      // Hash new password if password is being updated
+      
       if (userData.newPassword) {
         userData.password = await bcrypt.hash(userData.newPassword, 10);
       }
     }
 
-    // Update the user data
+    
     const updatedUser = await User.findByIdAndUpdate(id, userData, { new: true });
     return res.json(updatedUser);
   } catch (error) {
@@ -206,7 +206,7 @@ router.put("/users/:id", async (req, res) => {
   }
 });
 
-// Delete User by ID
+
 router.delete("/users/:id", async (req, res) => {
   try {
     const deletedUser = await User.findByIdAndDelete(req.params.id);
@@ -219,7 +219,7 @@ router.delete("/users/:id", async (req, res) => {
   }
 });
 
-// Danger Zones Routes
+
 router.get("/dangerzones", async (req, res) => {
   try {
     const dangerZones = await DangerZone.find().populate("markers");
@@ -284,7 +284,7 @@ router.put("/dangerzones/:id", async (req, res) => {
         place_name: marker.place_name,
         context: marker.context,
         timestamp: marker.timestamp,
-        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", // Example extraction logic
+        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", 
         country_name: marker.context.find(ctx => ctx.wikidata === 'Q262')?.text || "",
         short_code: marker.context.find(ctx => ctx.wikidata === 'Q262')?.short_code || "",
       }));
@@ -328,7 +328,7 @@ router.delete("/dangerzones/:id", async (req, res) => {
   }
 });
 
-// Fetch pending danger zones
+
 router.get('/pending-dangerzone/:alertId', verifyToken, async (req, res) => {
   try {
     const alert = await Alert.findById(req.params.alertId).populate('zone');
@@ -342,7 +342,7 @@ router.get('/pending-dangerzone/:alertId', verifyToken, async (req, res) => {
   }
 });
 
-// Approve a danger zone
+
 router.put('/dangerzones/approve/:id', verifyToken, async (req, res) => {
   try {
     const updatedZone = await DangerZone.findByIdAndUpdate(
@@ -360,7 +360,7 @@ router.put('/dangerzones/approve/:id', verifyToken, async (req, res) => {
   }
 });
 
-// Disapprove a danger zone
+
 router.put('/dangerzones/disapprove/:id', verifyToken, async (req, res) => {
   try {
     const updatedZone = await DangerZone.findByIdAndUpdate(
@@ -378,7 +378,7 @@ router.put('/dangerzones/disapprove/:id', verifyToken, async (req, res) => {
   }
 });
 
-// Danger Markers Routes
+
 router.get("/dangermarkers", async (req, res) => {
   try {
     const dangerMarkers = await DangerMarker.find();
@@ -400,17 +400,17 @@ router.get('/dangermarkers/:id', async (req, res) => {
   }
 });
 
-// Add a danger marker
+
 router.post("/dangermarkers/add", async (req, res) => {
   try {
     const { coordinates, description, context, timestamp } = req.body;
 
-    // Validate coordinates
+    
     if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
       return res.status(400).json({ error: "Invalid coordinates provided." });
     }
 
-    // Create new marker
+    
     const newMarker = await DangerMarker.create({
       coordinates,
       description,
@@ -427,7 +427,7 @@ router.post("/dangermarkers/add", async (req, res) => {
       data: newMarker,
     });
   } catch (error) {
-    console.error("Error adding danger marker:", error); // Improved logging
+    console.error("Error adding danger marker:", error); 
     res.status(500).json({ success: false, error: "Failed to add danger marker" });
   }
 });
@@ -475,7 +475,7 @@ router.delete("/dangermarkers/:id", async (req, res) => {
   }
 });
 
-// Safe Zones Routes
+
 router.get("/safezones", async (req, res) => {
   try {
     const safeZones = await SafeZone.find().populate("markers");
@@ -529,7 +529,7 @@ router.get("/safezones/:id", async (req, res) => {
   }
 });
 
-// Update Safe Zone by ID
+
 router.put("/safezones/:id", async (req, res) => {
   try {
     const { markers } = req.body;
@@ -539,7 +539,7 @@ router.put("/safezones/:id", async (req, res) => {
         place_name: marker.place_name,
         context: marker.context,
         timestamp: marker.timestamp,
-        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", // Example extraction logic
+        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", 
         country_name: marker.context.find(ctx => ctx.wikidata === 'Q262')?.text || "",
         short_code: marker.context.find(ctx => ctx.wikidata === 'Q262')?.short_code || "",
       }));
@@ -583,7 +583,7 @@ router.delete("/safezones/:id", async (req, res) => {
   }
 });
 
-// Fetch specific pending safe zone by alert ID
+
 router.get('/pending-safezone/:alertId', verifyToken, async (req, res) => {
   try {
     const alert = await Alert.findById(req.params.alertId).populate('zone');
@@ -597,7 +597,7 @@ router.get('/pending-safezone/:alertId', verifyToken, async (req, res) => {
   }
 });
 
-// Approve a safe zone
+
 router.put('/safezones/approve/:id', verifyToken, async (req, res) => {
   try {
     const updatedZone = await SafeZone.findByIdAndUpdate(
@@ -615,7 +615,7 @@ router.put('/safezones/approve/:id', verifyToken, async (req, res) => {
   }
 });
 
-// Disapprove a safe zone
+
 router.put('/safezones/disapprove/:id', verifyToken, async (req, res) => {
   try {
     const updatedZone = await SafeZone.findByIdAndUpdate(
@@ -633,7 +633,7 @@ router.put('/safezones/disapprove/:id', verifyToken, async (req, res) => {
   }
 });
 
-// Safety Markers Routes
+
 router.get("/safetymarkers", async (req, res) => {
   try {
     const safetyMarkers = await SafetyMarker.find();
@@ -720,7 +720,7 @@ router.delete("/safetymarkers/:id", async (req, res) => {
   }
 });
 
-// Activity Logs Routes
+
 router.get("/activityLogs", async (req, res) => {
   try {
     const { username } = req.query;
@@ -788,7 +788,7 @@ router.delete("/activityLogs/:id", async (req, res) => {
   }
 });
 
-// Alerts Routes
+
 router.get("/alerts", async (req, res) => {
   try {
     const alerts = await Alert.find();
@@ -848,7 +848,7 @@ router.post('/alerts/danger', async (req, res) => {
     const { coordinates } = req.body;
     const userId = req.userId;
 
-    // Create a new alert
+    
     const newAlert = new Alert({
       type: "danger",
       message: `User is in a danger zone at coordinates: ${coordinates}`,
@@ -858,10 +858,10 @@ router.post('/alerts/danger', async (req, res) => {
       zoneData: { coordinates }
     });
 
-    // Save the alert
+    
     await newAlert.save();
 
-    // Respond with the created alert
+    
     res.status(201).json(newAlert);
   } catch (error) {
     console.error('Error creating danger alert:', error);
@@ -869,7 +869,7 @@ router.post('/alerts/danger', async (req, res) => {
   }
 });
 
-// Fetch marker details by ID
+
 router.get('/markers/:id', async (req, res) => {
   try {
     let marker = await DangerMarker.findById(req.params.id).lean();
@@ -886,9 +886,9 @@ router.get('/markers/:id', async (req, res) => {
   }
 });
 
-// MAPBOX ROUTES
 
-// Forward Geocoding API
+
+
 router.get('/mapbox/forward', async (req, res) => {
   try {
     const { q, limit } = req.query;
@@ -905,7 +905,7 @@ router.get('/mapbox/forward', async (req, res) => {
   }
 });
 
-// Reverse Geocoding API
+
 router.get('/mapbox/reverse-geocode', async (req, res) => {
   try {
     const { longitude, latitude } = req.query;
@@ -926,21 +926,21 @@ router.get('/mapbox/reverse-geocode', async (req, res) => {
   }
 });
 
-// Itinerary Calculation API
+
 router.post('/calculate-itinerary', async (req, res) => {
   try {
     const { startCoordinates, endCoordinates, profile } = req.body;
 
-    // Construct the Mapbox Directions API URL
+    
     const coordinates = `${startCoordinates[1]},${startCoordinates[0]};${endCoordinates[1]},${endCoordinates[0]}`;
     const mapboxUrl = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coordinates}`;
 
-    // Parameters for the API request
+    
     const params = {
       access_token: process.env.MAPBOX_ACCESS_TOKEN
     };
 
-    // Make the API request
+    
     const itineraryResponse = await axios.get(mapboxUrl, { params });
 
     const itinerary = itineraryResponse.data;

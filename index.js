@@ -1,4 +1,3 @@
-// E:\S8\PFA - SafeZone\safezone_app_github\safezone_from_github\safezone\server\index.js
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -7,13 +6,13 @@ const socketIo = require("socket.io");
 const dotenv = require("dotenv");
 const routes = require("./routes/routes");
 
-dotenv.config(); // Load environment variables from .env file
+dotenv.config(); 
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Set up mongoose connection
+
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -21,10 +20,10 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 app.use(routes);
 
-const server = http.createServer(app);  // Create an HTTP server instance
-const io = socketIo(server, {          // Create a new Socket.IO instance attached to the server
+const server = http.createServer(app);  
+const io = socketIo(server, {          
   cors: {
-    origin: "*",  // Allow all origins (adjust in production)
+    origin: "*",  
     methods: ["GET", "POST"]
   }
 });
@@ -36,17 +35,17 @@ io.on('connection', (socket) => {
     console.log('Client disconnected');
   });
 
-  // Example listeners for mobile app events
+  
   socket.on('newMarker', (markerData) => {
-    io.emit('markerAdded', markerData);  // Emit to all connected clients
+    io.emit('markerAdded', markerData);  
   });
 
   socket.on('newZone', (zoneData) => {
-    io.emit('zoneAdded', zoneData);  // Emit to all connected clients
+    io.emit('zoneAdded', zoneData);  
   });
 });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {  // Use server to listen instead of app
+server.listen(PORT, () => {  
   console.log(`Server is running on port ${PORT}`);
 });
