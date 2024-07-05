@@ -26,7 +26,7 @@ const verifyToken = (req, res, next) => {
       return res.status(403).json({ message: "Failed to authenticate token." });
     }
 
-    req.user = decoded; 
+    req.user = decoded;
     console.log("Token verified:", decoded);
     next();
   });
@@ -57,7 +57,7 @@ router.post("/register", async (req, res) => {
       isAdmin: req.body.isAdmin || false,
     });
 
-    
+
     await ActivityLog.create({
       action: "User registered",
       username: req.body.username
@@ -185,19 +185,19 @@ router.put("/users/:id", async (req, res) => {
     }
 
     if (password) {
-      
+
       const passwordMatch = await bcrypt.compare(password, user.password);
       if (!passwordMatch) {
         return res.status(401).json({ message: "Incorrect password" });
       }
 
-      
+
       if (userData.newPassword) {
         userData.password = await bcrypt.hash(userData.newPassword, 10);
       }
     }
 
-    
+
     const updatedUser = await User.findByIdAndUpdate(id, userData, { new: true });
     return res.json(updatedUser);
   } catch (error) {
@@ -284,7 +284,7 @@ router.put("/dangerzones/:id", async (req, res) => {
         place_name: marker.place_name,
         context: marker.context,
         timestamp: marker.timestamp,
-        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", 
+        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "",
         country_name: marker.context.find(ctx => ctx.wikidata === 'Q262')?.text || "",
         short_code: marker.context.find(ctx => ctx.wikidata === 'Q262')?.short_code || "",
       }));
@@ -405,12 +405,12 @@ router.post("/dangermarkers/add", async (req, res) => {
   try {
     const { coordinates, description, context, timestamp } = req.body;
 
-    
+
     if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
       return res.status(400).json({ error: "Invalid coordinates provided." });
     }
 
-    
+
     const newMarker = await DangerMarker.create({
       coordinates,
       description,
@@ -427,7 +427,7 @@ router.post("/dangermarkers/add", async (req, res) => {
       data: newMarker,
     });
   } catch (error) {
-    console.error("Error adding danger marker:", error); 
+    console.error("Error adding danger marker:", error);
     res.status(500).json({ success: false, error: "Failed to add danger marker" });
   }
 });
@@ -539,7 +539,7 @@ router.put("/safezones/:id", async (req, res) => {
         place_name: marker.place_name,
         context: marker.context,
         timestamp: marker.timestamp,
-        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "", 
+        region_id: marker.context.find(ctx => ctx.wikidata === 'Q215467')?.id || "",
         country_name: marker.context.find(ctx => ctx.wikidata === 'Q262')?.text || "",
         short_code: marker.context.find(ctx => ctx.wikidata === 'Q262')?.short_code || "",
       }));
@@ -848,7 +848,7 @@ router.post('/alerts/danger', async (req, res) => {
     const { coordinates } = req.body;
     const userId = req.userId;
 
-    
+
     const newAlert = new Alert({
       type: "danger",
       message: `User is in a danger zone at coordinates: ${coordinates}`,
@@ -858,10 +858,10 @@ router.post('/alerts/danger', async (req, res) => {
       zoneData: { coordinates }
     });
 
-    
+
     await newAlert.save();
 
-    
+
     res.status(201).json(newAlert);
   } catch (error) {
     console.error('Error creating danger alert:', error);
@@ -931,16 +931,16 @@ router.post('/calculate-itinerary', async (req, res) => {
   try {
     const { startCoordinates, endCoordinates, profile } = req.body;
 
-    
+
     const coordinates = `${startCoordinates[1]},${startCoordinates[0]};${endCoordinates[1]},${endCoordinates[0]}`;
     const mapboxUrl = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coordinates}`;
 
-    
+
     const params = {
       access_token: process.env.MAPBOX_ACCESS_TOKEN
     };
 
-    
+
     const itineraryResponse = await axios.get(mapboxUrl, { params });
 
     const itinerary = itineraryResponse.data;
